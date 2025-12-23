@@ -13,33 +13,44 @@ from typing import Optional, Tuple
 
 def extract_spotify_info(url: str) -> Optional[Tuple[str, str]]:
     """
-    Extract track/artist info from Spotify URL using yt-dlp's extractor.
+    Extract track/artist info from Spotify URL by scraping the page.
     Returns (title, artist) or None if extraction fails.
     """
     try:
-        # Use yt-dlp to extract info (it can read Spotify metadata)
-        result = subprocess.run(
-            [
-                sys.executable, "-m", "yt_dlp",
-                "--dump-json",
-                "--no-download",
-                url
-            ],
-            capture_output=True,
-            text=True,
-            timeout=30
+        import urllib.request
+        
+        # Fetch the Spotify page
+        req = urllib.request.Request(
+            url,
+            headers={'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'}
         )
         
-        if result.returncode == 0 and result.stdout:
-            data = json.loads(result.stdout)
-            title = data.get("title", "")
-            artist = data.get("artist", data.get("uploader", ""))
-            if title:
-                return (title, artist)
-    except Exception:
+        with urllib.request.urlopen(req, timeout=15) as response:
+            html = response.read().decode('utf-8')
+        
+        # Extract title from <title> tag
+        # Format: "Song Name - song and lyrics by Artist | Spotify"
+        # or: "Song Name - song by Artist | Spotify"
+        title_match = re.search(r'<title>([^<]+)</title>', html)
+        if title_match:
+            title_text = title_match.group(1)
+            
+            # Parse "Song - song and lyrics by Artist | Spotify"
+            # or "Song - song by Artist | Spotify"
+            match = re.match(r'^(.+?)\s*-\s*song(?:\s+and\s+lyrics)?\s+by\s+(.+?)\s*\|', title_text)
+            if match:
+                song = match.group(1).strip()
+                artist = match.group(2).strip()
+                return (song, artist)
+            
+            # Fallback: just use the title before " | Spotify"
+            if ' | Spotify' in title_text:
+                song_info = title_text.split(' | Spotify')[0].strip()
+                return (song_info, "")
+        
+    except Exception as e:
         pass
     
-    # Fallback: try to parse from URL structure or page
     return None
 
 
