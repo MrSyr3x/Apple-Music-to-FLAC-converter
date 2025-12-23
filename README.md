@@ -5,20 +5,42 @@ A beautiful, user-friendly music downloader with support for **Apple Music**, **
 ![Platforms](https://img.shields.io/badge/Platforms-Apple%20Music%20%7C%20Spotify%20%7C%20YouTube-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
+## ⚡ One-Line Install
+
+```bash
+curl -sSL https://raw.githubusercontent.com/MrSyr3x/Apple-Music-to-FLAC-converter/main/install.sh | bash
+```
+
+This will:
+- Ask where you want to install
+- Set up everything automatically
+- Create a `music-dl` command for easy access
+- Ask if you want to start now or later
+
 ## ✨ Features
 
 - 🎨 **Interactive TUI** - No command-line knowledge needed
 - 🍎 **Apple Music** - High-quality AAC/ALAC with lyrics
-- 🎧 **Spotify** - Downloads without login
-- ▶️ **YouTube Music** - Downloads without login
-- 🔄 **FLAC Conversion** - Automatic lossless conversion
-- 📁 **Smart Organization** - Flat or artist-folder structure
-- 🍪 **Auto Cookie Detection** - Finds your cookies automatically
+- 🎧 **Spotify** - Downloads via spotdl
+- ▶️ **YouTube Music** - Direct downloads
+- � **Custom Save Location** - SD card, external drive, anywhere!
+- 🔄 **Auto Retry** - Failed songs retry via YouTube search
 - 🔒 **Security First** - Option to delete cookies after download
 
 ## 🚀 Quick Start
 
-### One-Click Method
+### After Installation
+
+```bash
+music-dl
+```
+
+Or navigate to install folder:
+```bash
+./start.sh
+```
+
+### Manual Setup
 
 ```bash
 git clone https://github.com/MrSyr3x/Apple-Music-to-FLAC-converter.git
@@ -26,25 +48,14 @@ cd Apple-Music-to-FLAC-converter
 ./start.sh
 ```
 
-That's it! The script handles everything automatically.
-
-### Manual Setup
+## 🗑️ Uninstall
 
 ```bash
-# Clone and setup
-git clone https://github.com/MrSyr3x/Apple-Music-to-FLAC-converter.git
-cd Apple-Music-to-FLAC-converter
-
-# Create virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run
-python download.py
+cd ~/music-downloader  # or your install path
+./uninstall.sh
 ```
+
+Downloads are kept safe during uninstall.
 
 ## 📋 Requirements
 
@@ -63,58 +74,37 @@ Requires cookies (one-time setup):
 3. Export cookies (save anywhere - we'll find it!)
 4. Run the app and select your cookie file
 
-> 🔒 **Security**: Your cookies stay local. The app offers to delete them after download for extra safety.
-
-### ▶️ YouTube Music
-No login required! Just paste your URL and download.
-- Works with any YouTube or YouTube Music URL
-- Highest quality available
-- Includes metadata and thumbnails
+> 🔒 **Security**: Your cookies stay local. The app offers to delete them after download.
 
 ### 🎧 Spotify
-Works via YouTube search - same method used by Telegram bots and spotDL!
-- Paste any Spotify track URL
-- We find the song on YouTube and download it
-- Metadata from Spotify is preserved
+Works with spotdl - just paste your URL:
+- Tracks, albums, playlists all supported
+- Downloads from YouTube with Spotify metadata
+- Auto-retry for failed songs
+
+### ▶️ YouTube Music
+No login required! Just paste your URL.
+- Works with any YouTube or YouTube Music URL
+- Highest quality available
 
 ## 🎵 Audio Formats
 
-Choose from 6 audio formats:
+Choose from 6 formats:
 
-| Format | Quality | Size | Best For |
-|--------|---------|------|----------|
-| **FLAC** | Lossless | Large | Audiophiles |
-| **MP3** | 320 kbps | Medium | Universal compatibility |
-| **M4A** | 256 kbps | Medium | Apple devices |
-| **WAV** | Lossless | Huge | Audio editing |
-| **OGG** | Variable | Small | Open source |
-| **OPUS** | Best | Smallest | Streaming |
+| Format | Quality | Best For |
+|--------|---------|----------|
+| **FLAC** | Lossless | Audiophiles |
+| **MP3** | 320 kbps | Universal |
+| **M4A** | 256 kbps | Apple devices |
+| **WAV** | Lossless | Audio editing |
+| **OGG** | Variable | Open source |
+| **OPUS** | Best | Streaming |
 
-## 📂 Output Options
+## 📂 Smart Folder Structure
 
-**Flat structure (default):**
-```
-downloads/
-├── Song Name.flac
-├── Another Song.flac
-└── ...
-```
-
-**With artist folders:**
-```
-downloads/
-└── Artist Name/
-    ├── Song Name.flac
-    └── ...
-```
-
-## 🎧 Audio Quality
-
-| Platform | Quality | Format |
-|----------|---------|--------|
-| Apple Music | 256 kbps AAC | .m4a → .flac |
-| Spotify | ~320 kbps | .flac |
-| YouTube | Variable | .flac |
+- **Single tracks** → `downloads/song.mp3`
+- **Playlists** → `downloads/PlaylistName/song.mp3`
+- **Albums** → `downloads/AlbumName/song.mp3`
 
 ## 🔧 Troubleshooting
 
@@ -122,7 +112,8 @@ downloads/
 |-------|----------|
 | "FFmpeg not found" | Run `brew install ffmpeg` |
 | Cookie not detected | Save with "cookie" in filename |
-| Download fails | Check URL is valid and accessible |
+| Download fails | Check URL is valid |
+| Some songs fail | Say "yes" to retry via YouTube |
 
 ## 📄 License
 
@@ -134,7 +125,6 @@ MIT License - See [LICENSE](LICENSE) for details.
 - [spotdl](https://github.com/spotDL/spotify-downloader) - Spotify downloader
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp) - YouTube downloader
 - [rich](https://github.com/Textualize/rich) - Beautiful terminal formatting
-- [InquirerPy](https://github.com/kazhala/InquirerPy) - Interactive prompts
 
 ---
 

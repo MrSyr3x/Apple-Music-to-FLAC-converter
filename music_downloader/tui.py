@@ -4,9 +4,10 @@ Beautiful menu-driven interface using rich and InquirerPy
 """
 
 import sys
+import os
 import shutil
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Tuple
 
 try:
     from rich.console import Console
@@ -34,6 +35,7 @@ from .utils import (
     delete_lyrics_files
 )
 from .platforms import apple, spotify, youtube
+from .verify import verify_downloads_interactive
 
 # Initialize console
 console = Console() if RICH_AVAILABLE else None
@@ -44,13 +46,13 @@ def print_banner():
     if RICH_AVAILABLE:
         banner = """
 [bold magenta]╔══════════════════════════════════════════╗[/]
-[bold magenta]║[/]  [bold cyan]🎵 Music Downloader[/] [dim]v2.0[/]               [bold magenta]║[/]
+[bold magenta]║[/]  [bold cyan]🎵 Music Downloader[/] [dim]v2.1[/]               [bold magenta]║[/]
 [bold magenta]║[/]  [dim]Apple Music • Spotify • YouTube[/]        [bold magenta]║[/]
 [bold magenta]╚══════════════════════════════════════════╝[/]
 """
         console.print(banner)
     else:
-        print("\n🎵 Music Downloader v2.0")
+        print("\n🎵 Music Downloader v2.1")
         print("   Apple Music • Spotify • YouTube\n")
 
 
@@ -103,8 +105,8 @@ def select_platform() -> Optional[str]:
     
     choices = [
         {"name": "🍎 Apple Music (requires cookies)", "value": "apple"},
+        {"name": "🎧 Spotify", "value": "spotify"},
         {"name": "▶️  YouTube Music (no login needed)", "value": "youtube"},
-        {"name": "🎧 Spotify (via YouTube search)", "value": "spotify"},
         Separator(),
         {"name": "❌ Exit", "value": None}
     ]
@@ -114,6 +116,64 @@ def select_platform() -> Optional[str]:
         choices=choices,
         default="apple"
     ).execute()
+
+
+def select_download_location() -> Path:
+    """Let user select where to save downloads."""
+    default_dir = get_downloads_dir()
+    
+    if not INQUIRER_AVAILABLE:
+        print(f"\nDefault download location: {default_dir}")
+        custom = input("Enter custom path (or press Enter for default): ").strip()
+        if custom:
+            path = Path(custom).expanduser().resolve()
+            path.mkdir(parents=True, exist_ok=True)
+            return path
+        return default_dir
+    
+    choices = [
+        {"name": f"📁 Default ({default_dir})", "value": "default"},
+        {"name": "📂 Choose custom folder...", "value": "custom"},
+        {"name": "💾 Enter path manually (SD card, external drive, etc.)", "value": "manual"},
+    ]
+    
+    result = inquirer.select(
+        message="Where to save downloads?",
+        choices=choices,
+        default="default"
+    ).execute()
+    
+    if result == "default":
+        return default_dir
+    elif result == "custom":
+        try:
+            path = inquirer.filepath(
+                message="Select download folder:",
+                only_directories=True,
+                validate=lambda x: Path(x).exists()
+            ).execute()
+            return Path(path).resolve()
+        except Exception:
+            print_warning("Could not browse folders, using default")
+            return default_dir
+    else:  # manual
+        path_str = inquirer.text(
+            message="Enter full path (e.g., /Volumes/SDCard/Music):",
+            validate=lambda x: len(x) > 0
+        ).execute()
+        
+        path = Path(path_str).expanduser().resolve()
+        try:
+            path.mkdir(parents=True, exist_ok=True)
+            # Test if writable
+            test_file = path / ".write_test"
+            test_file.touch()
+            test_file.unlink()
+            return path
+        except Exception as e:
+            print_error(f"Cannot write to {path}: {e}")
+            print_info("Using default location instead")
+            return default_dir
 
 
 def select_cookie_file() -> Optional[Path]:
@@ -215,9 +275,9 @@ def get_download_options(platform: str) -> dict:
         except (ValueError, IndexError):
             audio_format = "flac"
         
-        lyrics = input("Include lyrics? (y/n): ").lower().strip() == 'y'
-        flat = input("Flat structure (no artist folders)? (y/n): ").lower().strip() == 'y'
-        return {"format": audio_format, "lyrics": lyrics, "flat": flat}
+        lyrics = platform == "apple" and input("Include lyrics? (y/n): ").lower().strip() == 'y'
+        # Folder structure is now automatic based on URL type
+        return {"format": audio_format, "lyrics": lyrics, "flat": True}
     
     audio_format = inquirer.select(
         message="Select audio format:",
@@ -233,10 +293,10 @@ def get_download_options(platform: str) -> dict:
             default=False
         ).execute()
     
-    flat = inquirer.confirm(
-        message="Flat structure (no artist folders)?",
-        default=True
-    ).execute()
+    # Folder structure is now automatic:
+    # - Single tracks: flat (downloads/song.ext)
+    # - Playlists/Albums: named folder (downloads/PlaylistName/song.ext)
+    flat = True  # Not used anymore, kept for compatibility
     
     return {"format": audio_format, "lyrics": lyrics, "flat": flat}
 
@@ -272,87 +332,134 @@ def confirm_cookie_deletion() -> bool:
         return input("Delete cookie file for security? (y/n): ").lower().strip() == 'y'
 
 
-def run_download(platform: str, url: str, options: dict, cookies_path: Optional[Path] = None) -> bool:
-    """Execute the download based on platform."""
-    downloads_dir = get_downloads_dir()
-    audio_format = options.get("format", "flac")
+def display_failed_songs(failed_songs: List[str], output_dir: Path):
+    """Display failed songs and save to file."""
+    if not failed_songs:
+        return
     
-    print_info(f"Downloading to: {downloads_dir}")
-    print_info(f"Format: {audio_format.upper()}")
+    print_warning(f"{len(failed_songs)} songs failed to download")
     
     if RICH_AVAILABLE:
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console
-        ) as progress:
-            task = progress.add_task("Downloading...", total=None)
-            
-            if platform == "apple":
-                success = apple.download_apple_music(
-                    url=url,
-                    cookies_path=cookies_path,
-                    output_dir=downloads_dir,
-                    include_lyrics=options.get("lyrics", False),
-                    flat_structure=options.get("flat", True)
-                )
-            elif platform == "spotify":
-                success = spotify.download_spotify(
-                    url=url,
-                    output_dir=downloads_dir,
-                    audio_format=audio_format,
-                    include_lyrics=options.get("lyrics", False),
-                    flat_structure=options.get("flat", True)
-                )
-            elif platform == "youtube":
-                success = youtube.download_youtube(
-                    url=url,
-                    output_dir=downloads_dir,
-                    audio_format=audio_format,
-                    flat_structure=options.get("flat", True)
-                )
-            else:
-                success = False
+        console.print()
+        table = Table(title="❌ Failed Songs", border_style="red")
+        table.add_column("#", style="dim")
+        table.add_column("Song")
+        
+        for i, song in enumerate(failed_songs[:20], 1):  # Show first 20
+            table.add_row(str(i), song)
+        
+        if len(failed_songs) > 20:
+            table.add_row("...", f"and {len(failed_songs) - 20} more")
+        
+        console.print(table)
+        console.print()
     else:
-        print("Downloading...")
-        if platform == "apple":
-            success = apple.download_apple_music(
-                url=url,
-                cookies_path=cookies_path,
-                output_dir=downloads_dir,
-                include_lyrics=options.get("lyrics", False),
-                flat_structure=options.get("flat", True)
-            )
-        elif platform == "spotify":
-            success = spotify.download_spotify(
-                url=url,
-                output_dir=downloads_dir,
-                audio_format=audio_format,
-                include_lyrics=options.get("lyrics", False),
-                flat_structure=options.get("flat", True)
-            )
-        elif platform == "youtube":
-            success = youtube.download_youtube(
-                url=url,
-                output_dir=downloads_dir,
-                audio_format=audio_format,
-                flat_structure=options.get("flat", True)
-            )
-        else:
-            success = False
+        print("\nFailed songs:")
+        for i, song in enumerate(failed_songs[:10], 1):
+            print(f"  {i}. {song}")
+        if len(failed_songs) > 10:
+            print(f"  ... and {len(failed_songs) - 10} more")
     
-    # Post-processing
-    if success and options.get("flat", True):
-        moved = flatten_downloads(downloads_dir)
-        if moved > 0:
-            print_info(f"Organized {moved} files")
+    # Save to file
+    failed_file = output_dir / "failed_songs.txt"
+    with open(failed_file, 'w') as f:
+        f.write(f"# Failed songs - {len(failed_songs)} total\n")
+        f.write("# Search for these on Spotify/YouTube and retry individually\n\n")
+        for song in failed_songs:
+            f.write(f"{song}\n")
     
+    print_info(f"Failed songs saved to: {failed_file}")
+    return failed_file
+
+
+def ask_retry_failed_songs() -> bool:
+    """Ask user if they want to retry failed songs."""
+    if INQUIRER_AVAILABLE:
+        return inquirer.confirm(
+            message="Some songs failed. Do you want to retry them via YouTube search?",
+            default=True
+        ).execute()
+    else:
+        return input("\nSome songs failed. Retry via YouTube? (y/n): ").lower().strip() == 'y'
+
+
+def retry_failed_songs_via_youtube(failed_songs: List[str], output_dir: Path, audio_format: str):
+    """Retry failed songs by searching YouTube."""
+    print_info(f"Retrying {len(failed_songs)} songs via YouTube search...")
+    
+    retry_failed = []
+    for i, song in enumerate(failed_songs, 1):
+        print_info(f"[{i}/{len(failed_songs)}] Searching: {song}")
+        
+        # Use yt-dlp to search and download
+        success = youtube.download_youtube(
+            url=f"ytsearch1:{song}",
+            output_dir=output_dir,
+            audio_format=audio_format,
+            flat_structure=True
+        )
+        
+        if not success:
+            retry_failed.append(song)
+    
+    if retry_failed:
+        print_warning(f"{len(retry_failed)} songs still failed after retry")
+        # Update the failed_songs.txt
+        failed_file = output_dir / "failed_songs.txt"
+        with open(failed_file, 'w') as f:
+            f.write(f"# Failed songs after retry - {len(retry_failed)} total\n\n")
+            for song in retry_failed:
+                f.write(f"{song}\n")
+    else:
+        print_success("All retry attempts succeeded!")
+        # Remove failed_songs.txt since all succeeded
+        failed_file = output_dir / "failed_songs.txt"
+        if failed_file.exists():
+            failed_file.unlink()
+
+
+def run_download(platform: str, url: str, options: dict, downloads_dir: Path, cookies_path: Optional[Path] = None) -> Tuple[bool, List[str]]:
+    """Execute the download based on platform."""
+    audio_format = options.get("format", "flac")
+    failed_songs = []
+    
+    print_info(f"Saving to: {downloads_dir}")
+    print_info(f"Format: {audio_format.upper()}")
+    
+    # Call platform handlers - they now show their own clean progress
+    if platform == "apple":
+        success = apple.download_apple_music(
+            url=url,
+            cookies_path=cookies_path,
+            output_dir=downloads_dir,
+            include_lyrics=options.get("lyrics", False),
+            flat_structure=options.get("flat", True)
+        )
+    elif platform == "spotify":
+        success, failed_songs = spotify.download_spotify(
+            url=url,
+            output_dir=downloads_dir,
+            audio_format=audio_format,
+            include_lyrics=options.get("lyrics", False),
+            flat_structure=options.get("flat", True)
+        )
+    elif platform == "youtube":
+        success = youtube.download_youtube(
+            url=url,
+            output_dir=downloads_dir,
+            audio_format=audio_format,
+            flat_structure=options.get("flat", True)
+        )
+    else:
+        success = False
+    
+    # Post-processing: only delete lyrics if user didn't want them
     if success and not options.get("lyrics", False):
         deleted = delete_lyrics_files(downloads_dir)
         if deleted > 0:
             print_info(f"Removed {deleted} lyrics files")
     
-    return success
+    return success, failed_songs
 
 
 def run_tui():
@@ -395,6 +502,10 @@ def run_tui():
         print_error(f"Invalid {platform} URL")
         return
     
+    # Get download location
+    downloads_dir = select_download_location()
+    print_success(f"Saving to: {downloads_dir}")
+    
     # Get options
     options = get_download_options(platform)
     
@@ -404,19 +515,34 @@ def run_tui():
         console.print(Panel.fit(
             f"[bold]Platform:[/] {platform.title()}\n"
             f"[bold]URL:[/] {url[:50]}...\n"
+            f"[bold]Save to:[/] {downloads_dir}\n"
             f"[bold]Format:[/] {options['format'].upper()}\n"
-            f"[bold]Lyrics:[/] {'Yes' if options['lyrics'] else 'No'}\n"
-            f"[bold]Flat structure:[/] {'Yes' if options['flat'] else 'No'}",
+            f"[bold]Lyrics:[/] {'Yes' if options['lyrics'] else 'No'}",
             title="📥 Download Summary",
             border_style="green"
         ))
         console.print()
     
     # Run download
-    success = run_download(platform, url, options, cookies_path)
+    success, failed_songs = run_download(platform, url, options, downloads_dir, cookies_path)
+    
+    # Handle failed songs
+    if failed_songs:
+        display_failed_songs(failed_songs, downloads_dir)
+        
+        # Ask if user wants to retry via YouTube
+        if ask_retry_failed_songs():
+            retry_failed_songs_via_youtube(
+                failed_songs, 
+                downloads_dir, 
+                options.get("format", "flac")
+            )
     
     if success:
         print_success("Download complete! 🎉")
+        
+        # Verify metadata
+        verify_downloads_interactive(downloads_dir)
         
         # Cookie cleanup for Apple Music
         if platform == "apple" and cookies_path:
@@ -430,7 +556,7 @@ def run_tui():
             console.print()
             console.print(Panel.fit(
                 f"[bold green]Your music is ready![/]\n\n"
-                f"📁 {get_downloads_dir()}",
+                f"📁 {downloads_dir}",
                 border_style="green"
             ))
     else:
