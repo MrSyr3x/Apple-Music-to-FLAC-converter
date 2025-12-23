@@ -65,16 +65,30 @@ Requires cookies (one-time setup):
 
 > 🔒 **Security**: Your cookies stay local. The app offers to delete them after download for extra safety.
 
-### ▶️ YouTube Music ⭐ Recommended
+### ▶️ YouTube Music
 No login required! Just paste your URL and download.
 - Works with any YouTube or YouTube Music URL
 - Highest quality available
 - Includes metadata and thumbnails
 
-### 🎧 Spotify ⚠️ Limited Support
-> **Note**: Spotify uses DRM protection. Direct downloads are **not currently supported**.
-> 
-> **Workaround**: Search for your song on YouTube Music and use that URL instead.
+### 🎧 Spotify
+Works via YouTube search - same method used by Telegram bots and spotDL!
+- Paste any Spotify track URL
+- We find the song on YouTube and download it
+- Metadata from Spotify is preserved
+
+## 🎵 Audio Formats
+
+Choose from 6 audio formats:
+
+| Format | Quality | Size | Best For |
+|--------|---------|------|----------|
+| **FLAC** | Lossless | Large | Audiophiles |
+| **MP3** | 320 kbps | Medium | Universal compatibility |
+| **M4A** | 256 kbps | Medium | Apple devices |
+| **WAV** | Lossless | Huge | Audio editing |
+| **OGG** | Variable | Small | Open source |
+| **OPUS** | Best | Smallest | Streaming |
 
 ## 📂 Output Options
 

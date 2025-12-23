@@ -99,12 +99,12 @@ def select_platform() -> Optional[str]:
         print("3. YouTube Music")
         print("4. Exit")
         choice = input("\nSelect platform (1-4): ").strip()
-        return {"1": "apple", "2": "spotify", "3": "youtube", "4": None}.get(choice)
+        return {"1": "apple", "2": "youtube", "3": "spotify", "4": None}.get(choice)
     
     choices = [
         {"name": "🍎 Apple Music (requires cookies)", "value": "apple"},
-        {"name": "▶️  YouTube Music (no login needed) ⭐ Recommended", "value": "youtube"},
-        {"name": "🎧 Spotify (⚠️ limited support)", "value": "spotify"},
+        {"name": "▶️  YouTube Music (no login needed)", "value": "youtube"},
+        {"name": "🎧 Spotify (via YouTube search)", "value": "spotify"},
         Separator(),
         {"name": "❌ Exit", "value": None}
     ]
@@ -192,31 +192,53 @@ def show_cookie_help():
         print()
 
 
-def get_download_options() -> dict:
+def get_download_options(platform: str) -> dict:
     """Get download preferences from user."""
+    
+    # Available formats
+    formats = [
+        {"name": "🎵 FLAC (Lossless, largest)", "value": "flac"},
+        {"name": "🎧 MP3 (Universal, good quality)", "value": "mp3"},
+        {"name": "🍎 M4A/AAC (Apple format)", "value": "m4a"},
+        {"name": "🎹 WAV (Uncompressed, huge)", "value": "wav"},
+        {"name": "🔊 OGG (Open format)", "value": "ogg"},
+        {"name": "📱 OPUS (Best compression)", "value": "opus"},
+    ]
+    
     if not INQUIRER_AVAILABLE:
-        print("\nDownload options:")
-        flac = input("Convert to FLAC? (y/n): ").lower().strip() == 'y'
+        print("\nAvailable formats:")
+        for i, f in enumerate(formats, 1):
+            print(f"  {i}. {f['name']}")
+        choice = input("Select format (1-6): ").strip()
+        try:
+            audio_format = formats[int(choice) - 1]["value"]
+        except (ValueError, IndexError):
+            audio_format = "flac"
+        
         lyrics = input("Include lyrics? (y/n): ").lower().strip() == 'y'
         flat = input("Flat structure (no artist folders)? (y/n): ").lower().strip() == 'y'
-        return {"flac": flac, "lyrics": lyrics, "flat": flat}
+        return {"format": audio_format, "lyrics": lyrics, "flat": flat}
     
-    flac = inquirer.confirm(
-        message="Convert to FLAC?",
-        default=True
+    audio_format = inquirer.select(
+        message="Select audio format:",
+        choices=formats,
+        default="flac"
     ).execute()
     
-    lyrics = inquirer.confirm(
-        message="Include lyrics?",
-        default=False
-    ).execute()
+    # Only ask about lyrics for Apple Music
+    lyrics = False
+    if platform == "apple":
+        lyrics = inquirer.confirm(
+            message="Include lyrics?",
+            default=False
+        ).execute()
     
     flat = inquirer.confirm(
         message="Flat structure (no artist folders)?",
         default=True
     ).execute()
     
-    return {"flac": flac, "lyrics": lyrics, "flat": flat}
+    return {"format": audio_format, "lyrics": lyrics, "flat": flat}
 
 
 def get_url(platform: str) -> Optional[str]:
@@ -253,9 +275,10 @@ def confirm_cookie_deletion() -> bool:
 def run_download(platform: str, url: str, options: dict, cookies_path: Optional[Path] = None) -> bool:
     """Execute the download based on platform."""
     downloads_dir = get_downloads_dir()
-    audio_format = "flac" if options.get("flac", True) else "m4a"
+    audio_format = options.get("format", "flac")
     
     print_info(f"Downloading to: {downloads_dir}")
+    print_info(f"Format: {audio_format.upper()}")
     
     if RICH_AVAILABLE:
         with Progress(
@@ -346,24 +369,6 @@ def run_tui():
         print_info("Goodbye! 👋")
         return
     
-    # Spotify warning
-    if platform == "spotify":
-        if RICH_AVAILABLE:
-            console.print()
-            console.print(Panel.fit(
-                "[bold yellow]⚠️ Spotify Limitation[/]\n\n"
-                "Spotify uses DRM protection, so direct downloads\n"
-                "are not currently supported.\n\n"
-                "[bold green]💡 Alternative:[/]\n"
-                "Search for your song on YouTube Music and use that URL instead.",
-                border_style="yellow"
-            ))
-            console.print()
-        else:
-            print("\n⚠️ Spotify uses DRM - direct downloads not supported.")
-            print("💡 Use YouTube Music instead.\n")
-        return
-    
     # Cookie handling for Apple Music
     cookies_path = None
     if platform == "apple":
@@ -391,7 +396,7 @@ def run_tui():
         return
     
     # Get options
-    options = get_download_options()
+    options = get_download_options(platform)
     
     # Show summary
     if RICH_AVAILABLE:
@@ -399,7 +404,7 @@ def run_tui():
         console.print(Panel.fit(
             f"[bold]Platform:[/] {platform.title()}\n"
             f"[bold]URL:[/] {url[:50]}...\n"
-            f"[bold]Format:[/] {'FLAC' if options['flac'] else 'M4A'}\n"
+            f"[bold]Format:[/] {options['format'].upper()}\n"
             f"[bold]Lyrics:[/] {'Yes' if options['lyrics'] else 'No'}\n"
             f"[bold]Flat structure:[/] {'Yes' if options['flat'] else 'No'}",
             title="📥 Download Summary",
