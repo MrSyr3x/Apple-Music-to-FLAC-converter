@@ -105,24 +105,44 @@ def get_script_dir() -> Path:
 def show_cookie_instructions():
     """Display instructions for getting cookies."""
     if RICH_AVAILABLE:
-        table = Table(title="📋 How to Get Your Cookies", show_header=True, header_style="bold cyan")
-        table.add_column("Step", style="bold", width=6)
-        table.add_column("Action", width=60)
-        
-        table.add_row("1", "Install browser extension:\n• Chrome: [link=https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc]Get cookies.txt LOCALLY[/]\n• Firefox: [link=https://addons.mozilla.org/addon/export-cookies-txt]Export Cookies[/]")
-        table.add_row("2", "Go to [bold]music.apple.com[/] and log in with your account")
-        table.add_row("3", "Click the extension icon and export cookies")
-        table.add_row("4", f"Save the file as [bold]cookies.txt[/] in:\n{get_script_dir()}")
-        
         console.print()
-        console.print(table)
+        console.print("[bold cyan]📋 How to Get Your Cookies[/]")
         console.print()
-        console.print("[dim]Note: Your cookies stay local on your machine. Never share them![/]")
+        
+        # Safari
+        console.print("[bold yellow]🍎 Safari (macOS)[/]")
+        console.print("   Safari doesn't support cookie extensions. Use one of these:")
+        console.print("   [dim]Option A:[/] Use Chrome/Firefox just for cookie export")
+        console.print("   [dim]Option B:[/] Install safari-cookies via Homebrew:")
+        console.print("            [cyan]brew install nickvdyck/tap/safari-cookies[/]")
+        console.print("            [cyan]safari-cookies export --domain music.apple.com > cookies.txt[/]")
+        console.print()
+        
+        # Chrome
+        console.print("[bold green]🌐 Chrome / Edge / Brave[/]")
+        console.print("   1. Install: [link=https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc]Get cookies.txt LOCALLY[/]")
+        console.print("   2. Go to [bold]music.apple.com[/] and log in")
+        console.print("   3. Click extension → Export → Save as [bold]cookies.txt[/]")
+        console.print()
+        
+        # Firefox
+        console.print("[bold orange1]🦊 Firefox[/]")
+        console.print("   1. Install: [link=https://addons.mozilla.org/addon/export-cookies-txt]Export Cookies[/]")
+        console.print("   2. Go to [bold]music.apple.com[/] and log in")
+        console.print("   3. Click extension → Export → Save as [bold]cookies.txt[/]")
+        console.print()
+        
+        console.print(f"[dim]Save cookies.txt in:[/] {get_script_dir()}")
+        console.print()
+        console.print("[dim]⚠ Your cookies stay local. Never share them![/]")
     else:
         print("\n📋 How to Get Your Cookies:")
-        print("1. Install browser extension (Get cookies.txt LOCALLY for Chrome)")
-        print("2. Go to music.apple.com and log in")
-        print("3. Export cookies and save as 'cookies.txt' in this folder")
+        print("\n🍎 Safari: Use Chrome/Firefox OR install safari-cookies via Homebrew")
+        print("   brew install nickvdyck/tap/safari-cookies")
+        print("   safari-cookies export --domain music.apple.com > cookies.txt")
+        print("\n🌐 Chrome/Edge: Install 'Get cookies.txt LOCALLY' extension")
+        print("🦊 Firefox: Install 'Export Cookies' extension")
+        print("\nThen: Go to music.apple.com, log in, export cookies as 'cookies.txt'")
         print()
 
 

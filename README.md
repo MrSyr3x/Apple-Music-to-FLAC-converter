@@ -38,15 +38,47 @@ pip install -r requirements.txt
 
 This tool needs your Apple Music cookies to authenticate. Your cookies stay **local on your machine** and are never shared.
 
-1. Install a browser extension:
-   - **Chrome**: [Get cookies.txt LOCALLY](https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc)
-   - **Firefox**: [Export Cookies](https://addons.mozilla.org/addon/export-cookies-txt)
+<details>
+<summary><b>🍎 Safari (macOS)</b></summary>
 
-2. Go to [music.apple.com](https://music.apple.com) and **log in**
+Safari doesn't have cookie export extensions, so use one of these methods:
 
-3. Click the extension icon → Export cookies
+**Option A: Use a different browser just for cookie export**
+1. Open Chrome/Firefox, install the extension below
+2. Go to [music.apple.com](https://music.apple.com) and log in
+3. Export cookies and save as `cookies.txt`
 
-4. Save the file as `cookies.txt` in the project folder
+**Option B: Use a terminal tool**
+1. Install [safari-cookies](https://github.com/nickvdyck/safari-cookies):
+   ```bash
+   brew install nickvdyck/tap/safari-cookies
+   ```
+2. Export cookies:
+   ```bash
+   safari-cookies export --domain music.apple.com > cookies.txt
+   ```
+
+</details>
+
+<details>
+<summary><b>🌐 Chrome / Edge / Brave</b></summary>
+
+1. Install [Get cookies.txt LOCALLY](https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc)
+2. Go to [music.apple.com](https://music.apple.com) and log in
+3. Click extension icon → Export
+4. Save as `cookies.txt` in the project folder
+
+</details>
+
+<details>
+<summary><b>🦊 Firefox</b></summary>
+
+1. Install [Export Cookies](https://addons.mozilla.org/addon/export-cookies-txt)
+2. Go to [music.apple.com](https://music.apple.com) and log in
+3. Click extension icon → Export
+4. Save as `cookies.txt` in the project folder
+
+</details>
 
 ### 3. Download Music!
 
