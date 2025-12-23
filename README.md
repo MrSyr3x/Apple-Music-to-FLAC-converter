@@ -53,7 +53,7 @@ python download.py
 
 ## 🎵 Platform Guide
 
-### Apple Music
+### 🍎 Apple Music
 Requires cookies (one-time setup):
 
 1. Install browser extension:
@@ -65,8 +65,16 @@ Requires cookies (one-time setup):
 
 > 🔒 **Security**: Your cookies stay local. The app offers to delete them after download for extra safety.
 
-### Spotify & YouTube Music
+### ▶️ YouTube Music ⭐ Recommended
 No login required! Just paste your URL and download.
+- Works with any YouTube or YouTube Music URL
+- Highest quality available
+- Includes metadata and thumbnails
+
+### 🎧 Spotify ⚠️ Limited Support
+> **Note**: Spotify uses DRM protection. Direct downloads are **not currently supported**.
+> 
+> **Workaround**: Search for your song on YouTube Music and use that URL instead.
 
 ## 📂 Output Options
 

@@ -103,8 +103,8 @@ def select_platform() -> Optional[str]:
     
     choices = [
         {"name": "🍎 Apple Music (requires cookies)", "value": "apple"},
-        {"name": "🎧 Spotify (no login needed)", "value": "spotify"},
-        {"name": "▶️  YouTube Music (no login needed)", "value": "youtube"},
+        {"name": "▶️  YouTube Music (no login needed) ⭐ Recommended", "value": "youtube"},
+        {"name": "🎧 Spotify (⚠️ limited support)", "value": "spotify"},
         Separator(),
         {"name": "❌ Exit", "value": None}
     ]
@@ -344,6 +344,24 @@ def run_tui():
     platform = select_platform()
     if not platform:
         print_info("Goodbye! 👋")
+        return
+    
+    # Spotify warning
+    if platform == "spotify":
+        if RICH_AVAILABLE:
+            console.print()
+            console.print(Panel.fit(
+                "[bold yellow]⚠️ Spotify Limitation[/]\n\n"
+                "Spotify uses DRM protection, so direct downloads\n"
+                "are not currently supported.\n\n"
+                "[bold green]💡 Alternative:[/]\n"
+                "Search for your song on YouTube Music and use that URL instead.",
+                border_style="yellow"
+            ))
+            console.print()
+        else:
+            print("\n⚠️ Spotify uses DRM - direct downloads not supported.")
+            print("💡 Use YouTube Music instead.\n")
         return
     
     # Cookie handling for Apple Music

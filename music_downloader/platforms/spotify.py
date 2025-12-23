@@ -1,6 +1,8 @@
 """
 Spotify platform handler
-Uses spotdl for downloading
+
+Note: Spotify uses DRM protection. Direct downloading is not possible.
+This handler provides guidance to users about alternatives.
 """
 
 import subprocess
@@ -17,41 +19,30 @@ def download_spotify(
     flat_structure: bool = True
 ) -> bool:
     """
-    Download from Spotify using spotdl.
+    Spotify download handler.
     
-    Args:
-        url: Spotify URL
-        output_dir: Output directory
-        audio_format: Audio format (flac, mp3, etc.)
-        include_lyrics: Whether to download lyrics
-        flat_structure: If True, download to flat structure
-        
+    Note: Spotify uses DRM protection, so direct download is not supported.
+    This function will return False and the TUI will guide users to alternatives.
+    
+    The user should:
+    1. Search for the song on YouTube Music
+    2. Use the YouTube Music option instead
+    
     Returns:
-        True if successful, False otherwise
+        False - direct Spotify download not supported
     """
-    # Build output template
-    if flat_structure:
-        template = "{title}"
-    else:
-        template = "{artist}/{title}"
+    # Spotify uses DRM, cannot download directly
+    # The spotdl library has Python 3.14 compatibility issues
+    # and Spotify has cracked down on it anyway
+    print("\n⚠️  Spotify uses DRM protection.")
+    print("   Direct download is not currently supported.")
+    print("\n💡 Try this instead:")
+    print("   1. Find the song on YouTube Music")
+    print("   2. Copy the YouTube Music URL")
+    print("   3. Use the 'YouTube Music' option in this app")
+    print()
     
-    cmd = [
-        sys.executable, "-m", "spotdl",
-        "--output", str(output_dir / f"{template}.{audio_format}"),
-        "--format", audio_format,
-        url
-    ]
-    
-    if include_lyrics:
-        cmd.extend(["--lyrics", "synced"])
-    
-    try:
-        result = subprocess.run(cmd, check=True)
-        return True
-    except subprocess.CalledProcessError:
-        return False
-    except FileNotFoundError:
-        return False
+    return False
 
 
 def validate_spotify_url(url: str) -> bool:
@@ -63,4 +54,9 @@ def validate_spotify_url(url: str) -> bool:
 
 def get_required_dependencies() -> list:
     """Return list of required dependencies for Spotify."""
-    return ["spotdl", "ffmpeg"]
+    return ["ffmpeg"]
+
+
+def is_supported() -> bool:
+    """Check if Spotify downloads are supported."""
+    return False  # Spotify DRM prevents direct downloads
