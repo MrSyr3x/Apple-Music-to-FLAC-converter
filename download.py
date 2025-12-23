@@ -111,11 +111,10 @@ def show_cookie_instructions():
         
         # Safari
         console.print("[bold yellow]🍎 Safari (macOS)[/]")
-        console.print("   Safari doesn't support cookie extensions. Use one of these:")
-        console.print("   [dim]Option A:[/] Use Chrome/Firefox just for cookie export")
-        console.print("   [dim]Option B:[/] Install safari-cookies via Homebrew:")
-        console.print("            [cyan]brew install nickvdyck/tap/safari-cookies[/]")
-        console.print("            [cyan]safari-cookies export --domain music.apple.com > cookies.txt[/]")
+        console.print("   Safari doesn't support cookie extensions.")
+        console.print("   [bold]Recommended:[/] Use Chrome/Firefox just for the cookie export step")
+        console.print("   [dim]Alternative:[/] pip install safari-cookies-export")
+        console.print("                  python -m safari_cookies_export music.apple.com > cookies.txt")
         console.print()
         
         # Chrome
@@ -137,9 +136,9 @@ def show_cookie_instructions():
         console.print("[dim]⚠ Your cookies stay local. Never share them![/]")
     else:
         print("\n📋 How to Get Your Cookies:")
-        print("\n🍎 Safari: Use Chrome/Firefox OR install safari-cookies via Homebrew")
-        print("   brew install nickvdyck/tap/safari-cookies")
-        print("   safari-cookies export --domain music.apple.com > cookies.txt")
+        print("\n🍎 Safari: Use Chrome/Firefox for the cookie export (easiest)")
+        print("   Or: pip install safari-cookies-export")
+        print("       python -m safari_cookies_export music.apple.com > cookies.txt")
         print("\n🌐 Chrome/Edge: Install 'Get cookies.txt LOCALLY' extension")
         print("🦊 Firefox: Install 'Export Cookies' extension")
         print("\nThen: Go to music.apple.com, log in, export cookies as 'cookies.txt'")

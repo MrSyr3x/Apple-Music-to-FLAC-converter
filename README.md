@@ -41,22 +41,21 @@ This tool needs your Apple Music cookies to authenticate. Your cookies stay **lo
 <details>
 <summary><b>🍎 Safari (macOS)</b></summary>
 
-Safari doesn't have cookie export extensions, so use one of these methods:
+Safari doesn't support cookie export extensions. **Easiest solution:** Use Chrome or Firefox just for the one-time cookie export.
 
-**Option A: Use a different browser just for cookie export**
-1. Open Chrome/Firefox, install the extension below
-2. Go to [music.apple.com](https://music.apple.com) and log in
-3. Export cookies and save as `cookies.txt`
+**Alternative: Export manually via macOS Keychain**
+1. Open **Keychain Access** app
+2. Search for "music.apple.com"
+3. This method is complex - we recommend just using Chrome/Firefox for the cookie export step
 
-**Option B: Use a terminal tool**
-1. Install [safari-cookies](https://github.com/nickvdyck/safari-cookies):
-   ```bash
-   brew install nickvdyck/tap/safari-cookies
-   ```
-2. Export cookies:
-   ```bash
-   safari-cookies export --domain music.apple.com > cookies.txt
-   ```
+**Or use a Python script:**
+```bash
+# Install the tool
+pip install safari-cookies-export
+
+# Export cookies (Safari must be closed)
+python -m safari_cookies_export music.apple.com > cookies.txt
+```
 
 </details>
 
