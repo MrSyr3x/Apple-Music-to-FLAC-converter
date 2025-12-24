@@ -289,39 +289,81 @@ def validate_spotify_url(url: str) -> bool:
 
 def get_playlist_tracks(url: str) -> List[str]:
     """
-    Get all track names from a Spotify playlist/album using spotdl.
-    Returns list of track names.
+    Get all track names from a Spotify playlist/album using spotipy.
+    Returns list of track names in format "Artist - Title".
     """
-    _ensure_event_loop()
+    try:
+        import spotipy
+        from spotipy.oauth2 import SpotifyClientCredentials
+    except ImportError:
+        return []
     
-    cmd = [
-        sys.executable,
-        str(Path(__file__).parent.parent.parent / "spotdl_wrapper.py"),
-        url,
-        "--print-tracks",
-    ]
+    # Extract playlist/album ID from URL
+    url_type = _get_url_type(url)
     
-    tracks = []
+    if url_type == "track":
+        return []  # Single track, no need to compare
+    
+    # Extract ID from URL
+    if url_type == "playlist":
+        match = re.search(r'/playlist/([a-zA-Z0-9]+)', url)
+    elif url_type == "album":
+        match = re.search(r'/album/([a-zA-Z0-9]+)', url)
+    else:
+        return []
+    
+    if not match:
+        return []
+    
+    item_id = match.group(1)
     
     try:
-        process = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            text=True
-        )
+        # Use spotdl's embedded credentials (they work for public data)
+        sp = spotipy.Spotify(client_credentials_manager=SpotifyClientCredentials(
+            client_id='5f573c9620494bae87890c0f08a60293',
+            client_secret='212476d9b0f3472eaa762d90b19b0ba8'
+        ))
         
-        for line in iter(process.stdout.readline, ''):
-            line = line.strip()
-            if line and not line.startswith('[') and ' - ' in line:
-                # spotdl prints "Artist - Title"
-                tracks.append(line)
+        tracks = []
         
-        process.wait()
-    except Exception:
-        pass
-    
-    return tracks
+        if url_type == "playlist":
+            results = sp.playlist_tracks(item_id)
+            while results:
+                for item in results['items']:
+                    if item['track']:
+                        track = item['track']
+                        artist = track['artists'][0]['name'] if track['artists'] else 'Unknown'
+                        title = track['name']
+                        tracks.append(f"{artist} - {title}")
+                
+                # Handle pagination
+                if results['next']:
+                    results = sp.next(results)
+                else:
+                    break
+        
+        elif url_type == "album":
+            results = sp.album_tracks(item_id)
+            album_info = sp.album(item_id)
+            album_artist = album_info['artists'][0]['name'] if album_info['artists'] else 'Unknown'
+            
+            while results:
+                for track in results['items']:
+                    artist = track['artists'][0]['name'] if track['artists'] else album_artist
+                    title = track['name']
+                    tracks.append(f"{artist} - {title}")
+                
+                if results['next']:
+                    results = sp.next(results)
+                else:
+                    break
+        
+        return tracks
+        
+    except Exception as e:
+        if RICH_AVAILABLE:
+            console.print(f"  [dim]Could not get playlist info: {e}[/dim]")
+        return []
 
 
 def find_missing_songs(url: str, output_dir: Path) -> List[str]:
