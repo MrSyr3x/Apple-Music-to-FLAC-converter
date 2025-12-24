@@ -151,6 +151,14 @@ def download_spotify(
         
         print()
         print(f"  📊 Downloaded: {completed}, Failed: {len(failed_songs)}")
+        
+        # Show failed songs so user knows which ones
+        if failed_songs:
+            print()
+            print("  ❌ Failed songs:")
+            for song in failed_songs:
+                print(f"     • {song}")
+        
         print()
         
         return (True, failed_songs)
