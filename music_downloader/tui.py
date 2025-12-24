@@ -382,6 +382,8 @@ def run_download(platform: str, url: str, options: dict, downloads_dir: Path, co
             output_dir=downloads_dir,
             audio_format=audio_format
         )
+        # Check for missing songs (compare playlist to downloaded files)
+        spotify.check_and_report_missing(url, downloads_dir)
     elif platform == "youtube":
         success = youtube.download_youtube(
             url=url,

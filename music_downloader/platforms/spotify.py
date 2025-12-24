@@ -287,5 +287,124 @@ def validate_spotify_url(url: str) -> bool:
     return bool(re.match(pattern, url))
 
 
+def get_playlist_tracks(url: str) -> List[str]:
+    """
+    Get all track names from a Spotify playlist/album using spotdl.
+    Returns list of track names.
+    """
+    _ensure_event_loop()
+    
+    cmd = [
+        sys.executable,
+        str(Path(__file__).parent.parent.parent / "spotdl_wrapper.py"),
+        url,
+        "--print-tracks",
+    ]
+    
+    tracks = []
+    
+    try:
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True
+        )
+        
+        for line in iter(process.stdout.readline, ''):
+            line = line.strip()
+            if line and not line.startswith('[') and ' - ' in line:
+                # spotdl prints "Artist - Title"
+                tracks.append(line)
+        
+        process.wait()
+    except Exception:
+        pass
+    
+    return tracks
+
+
+def find_missing_songs(url: str, output_dir: Path) -> List[str]:
+    """
+    Compare playlist tracks with downloaded files to find missing songs.
+    Returns list of missing track names.
+    """
+    # Get all tracks from playlist
+    all_tracks = get_playlist_tracks(url)
+    
+    if not all_tracks:
+        return []
+    
+    # Get downloaded files
+    audio_extensions = {'.mp3', '.m4a', '.flac', '.opus', '.ogg', '.wav'}
+    downloaded_files = []
+    
+    for f in output_dir.rglob('*'):
+        if f.suffix.lower() in audio_extensions:
+            # Get filename without extension
+            downloaded_files.append(f.stem.lower())
+    
+    # Find missing
+    missing = []
+    for track in all_tracks:
+        # Normalize track name for comparison
+        track_lower = track.lower()
+        # Check if any part of the track name is in downloaded files
+        found = False
+        for downloaded in downloaded_files:
+            # Check if title part matches (after the " - ")
+            if ' - ' in track:
+                title_part = track.split(' - ', 1)[1].lower()
+                if title_part in downloaded or downloaded in title_part:
+                    found = True
+                    break
+            if track_lower in downloaded or downloaded in track_lower:
+                found = True
+                break
+        
+        if not found:
+            missing.append(track)
+    
+    return missing
+
+
+def check_and_report_missing(url: str, output_dir: Path) -> List[str]:
+    """
+    Check for missing songs and report them.
+    Call this after download to show what's missing.
+    """
+    if _get_url_type(url) not in ['playlist', 'album']:
+        return []
+    
+    if RICH_AVAILABLE:
+        console.print("\n  [dim]🔍 Checking for missing songs...[/dim]")
+    else:
+        print("\n  🔍 Checking for missing songs...")
+    
+    missing = find_missing_songs(url, output_dir)
+    
+    if missing:
+        if RICH_AVAILABLE:
+            console.print(f"\n  [yellow]⚠ {len(missing)} songs may be missing:[/yellow]")
+            for song in missing[:10]:  # Show max 10
+                console.print(f"     [dim]•[/dim] {song}")
+            if len(missing) > 10:
+                console.print(f"     [dim]... and {len(missing) - 10} more[/dim]")
+        else:
+            print(f"\n  ⚠ {len(missing)} songs may be missing:")
+            for song in missing[:10]:
+                print(f"     • {song}")
+            if len(missing) > 10:
+                print(f"     ... and {len(missing) - 10} more")
+    else:
+        if RICH_AVAILABLE:
+            console.print("  [green]✓ All songs downloaded successfully![/green]")
+        else:
+            print("  ✓ All songs downloaded successfully!")
+    
+    return missing
+
+
 def get_required_dependencies() -> list:
     return ["spotdl", "ffmpeg"]
+
