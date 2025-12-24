@@ -133,6 +133,14 @@ def download_youtube(
                                 name = name[:37] + "..."
                             progress.update(download_task, completed=100, description=f"[dim]⏭ {name} (cached)")
                             completed += 1
+                    
+                    # Error - show failed song immediately
+                    elif "ERROR:" in line or "error:" in line.lower():
+                        if current_song:
+                            console.print(f"\n  [red]✗ Failed: {current_song}[/red]")
+                        else:
+                            # Try to extract what failed
+                            console.print(f"\n  [red]✗ Error: {line[:60]}[/red]")
         else:
             # Fallback without Rich
             for line in iter(process.stdout.readline, ''):
@@ -164,6 +172,12 @@ def download_youtube(
                 
                 elif "has already been downloaded" in line:
                     completed += 1
+                
+                elif "ERROR:" in line or "error:" in line.lower():
+                    if current_song:
+                        print(f"\n  ✗ Failed: {current_song}", flush=True)
+                    else:
+                        print(f"\n  ✗ Error: {line[:60]}", flush=True)
         
         process.wait()
         

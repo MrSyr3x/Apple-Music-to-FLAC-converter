@@ -141,6 +141,13 @@ def download_apple_music(
                     elif "Success" in line or "Saved" in line:
                         completed += 1
                         progress.update(download_task, completed=completed, description=f"[green]✓ {current_song or 'Saved'}")
+                    
+                    # Error - show failed track immediately
+                    elif "Error" in line or "Failed" in line or "error" in line.lower():
+                        if current_song:
+                            console.print(f"\n  [red]✗ Failed: {current_song}[/red]")
+                        else:
+                            console.print(f"\n  [red]✗ Error: {line[:60]}[/red]")
         else:
             # Fallback without Rich
             for line in iter(process.stdout.readline, ''):
@@ -167,6 +174,9 @@ def download_apple_music(
                             print(f"  ✓ Downloaded: {completed}/{total} ({pct}%)", flush=True)
                         else:
                             print(f"  ✓ Downloaded: {completed}", flush=True)
+                
+                elif "Error" in line or "Failed" in line or "error" in line.lower():
+                    print(f"\n  ✗ Error: {line[:60]}", flush=True)
         
         process.wait()
         

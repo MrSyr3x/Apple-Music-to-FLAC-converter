@@ -128,6 +128,8 @@ def _download_with_progress(cmd: list) -> Tuple[int, List[str], int, List[str]]:
                     if match:
                         song_name = match.group(1)
                         failed_songs.append(song_name)
+                        # Print failed song name immediately
+                        console.print(f"\n  [red]✗ Failed: {song_name}[/red]")
                         if download_task:
                             progress.update(download_task, description=f"[red]✗ {song_name[:40]}")
     else:
@@ -149,7 +151,9 @@ def _download_with_progress(cmd: list) -> Tuple[int, List[str], int, List[str]]:
             elif "Error" in line or "Unable" in line:
                 match = re.search(r'"(.+?)"', line)
                 if match:
-                    failed_songs.append(match.group(1))
+                    song_name = match.group(1)
+                    failed_songs.append(song_name)
+                    print(f"\n  ✗ Failed: {song_name}", flush=True)
     
     process.wait()
     

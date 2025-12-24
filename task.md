@@ -6,7 +6,7 @@
 - [x] Colored output (green=done, yellow=downloading, red=failed)
 - [x] Download speed display (songs/min)
 - [x] ETA/Time elapsed shown
-- [x] Failed songs listed at end with names
+- [x] **Failed songs shown immediately** when they fail (all platforms)
 - [x] Tab completion for file paths
 
 ## Features We Have
@@ -45,9 +45,10 @@
 | Bug | Status | Notes |
 |-----|--------|-------|
 | spotdl missing spotipy dependency | ✅ Fixed | Reinstalled spotipy |
-| Fake FLAC options for Spotify | ✅ Fixed | Removed FLAC/WAV from Spotify/YouTube |
-| Failed songs not listed | ✅ Fixed | Added failed song names display |
-| Missing songs check not working | ✅ Fixed | Now uses spotipy API directly |
-| No duplicate detection | ✅ Fixed | Added find_duplicates function |
-| Download count double-counting on retry | ✅ Fixed | Now counts actual files |
-| False positives in missing songs | ✅ Fixed | Improved fuzzy matching |
+| Fake FLAC options for Spotify | ✅ Fixed | Removed from menu |
+| Failed songs not listed | ✅ Fixed | Now shown at end |
+| Missing songs check not working | ✅ Fixed | Uses spotipy API |
+| No duplicate detection | ✅ Fixed | Added find_duplicates |
+| Download count double-counting | ✅ Fixed | Counts actual files |
+| False positives in missing songs | ✅ Fixed | Fuzzy matching |
+| Failed songs not shown immediately | ✅ Fixed | Prints in red when fails |
