@@ -1,6 +1,6 @@
 """
 Spotify platform handler
-Uses spotdl with auto-retry for failed downloads
+Uses spotdl with rich progress display
 """
 
 import asyncio
@@ -10,6 +10,17 @@ import re
 import time
 from pathlib import Path
 from typing import Tuple, List
+
+try:
+    from rich.console import Console
+    from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeRemainingColumn, TimeElapsedColumn
+    from rich.panel import Panel
+    from rich.text import Text
+    RICH_AVAILABLE = True
+except ImportError:
+    RICH_AVAILABLE = False
+
+console = Console() if RICH_AVAILABLE else None
 
 
 def _ensure_event_loop():
@@ -32,14 +43,17 @@ def _get_url_type(url: str) -> str:
     return "unknown"
 
 
-def _download_with_retry(cmd: list, max_retries: int = 3, retry_delay: int = 3) -> Tuple[int, List[str], int]:
+def _download_with_progress(cmd: list) -> Tuple[int, List[str], int, List[str]]:
     """
-    Run spotdl with automatic retry for transient failures.
-    Returns (completed_count, failed_songs, total_found)
+    Run spotdl with rich progress display.
+    Returns (completed_count, failed_songs, total_found, downloaded_songs)
     """
     failed_songs = []
+    downloaded_songs = []
     completed = 0
     total_found = 0
+    current_song = ""
+    start_time = time.time()
     
     process = subprocess.Popen(
         cmd,
@@ -50,35 +64,105 @@ def _download_with_retry(cmd: list, max_retries: int = 3, retry_delay: int = 3) 
         env={**dict(__import__('os').environ), 'PYTHONUNBUFFERED': '1'}
     )
     
-    for line in iter(process.stdout.readline, ''):
-        line = line.strip()
-        if not line:
-            continue
-        
-        # Found song - count total
-        if "Found" in line and "URL" in line:
-            total_found += 1
-            if total_found % 50 == 0:
-                print(f"  🔍 Finding songs... {total_found} found", flush=True)
-        
-        # Download completed
-        elif "Done" in line or "Downloaded" in line:
-            completed += 1
-            if completed <= 10 or completed % 10 == 0:
-                if total_found > 0:
-                    pct = int(completed / total_found * 100)
-                    print(f"  ✓ Downloaded: {completed}/{total_found} ({pct}%)", flush=True)
-                else:
-                    print(f"  ✓ Downloaded: {completed}", flush=True)
-        
-        # Error - track for retry
-        elif "Error" in line or "Unable" in line:
-            match = re.search(r'"(.+?)"', line)
-            if match:
-                failed_songs.append(match.group(1))
+    if RICH_AVAILABLE:
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[bold blue]{task.description}"),
+            BarColumn(bar_width=30),
+            TaskProgressColumn(),
+            TextColumn("•"),
+            TimeElapsedColumn(),
+            TextColumn("•"),
+            TimeRemainingColumn(),
+            console=console,
+            transient=False
+        ) as progress:
+            
+            finding_task = progress.add_task("[cyan]Finding songs...", total=None)
+            download_task = None
+            
+            for line in iter(process.stdout.readline, ''):
+                line = line.strip()
+                if not line:
+                    continue
+                
+                # Found song
+                if "Found" in line and "URL" in line:
+                    total_found += 1
+                    progress.update(finding_task, description=f"[cyan]Finding songs... {total_found} found")
+                
+                # Downloading a song - extract name
+                elif "Downloading" in line:
+                    match = re.search(r'"(.+?)"', line)
+                    if match:
+                        current_song = match.group(1)
+                        if download_task is None and total_found > 0:
+                            progress.remove_task(finding_task)
+                            download_task = progress.add_task(
+                                f"[yellow]⬇ {current_song[:40]}...",
+                                total=total_found
+                            )
+                        elif download_task:
+                            progress.update(download_task, description=f"[yellow]⬇ {current_song[:40]}...")
+                
+                # Download completed
+                elif "Done" in line or "Downloaded" in line:
+                    completed += 1
+                    if current_song:
+                        downloaded_songs.append(current_song)
+                    if download_task:
+                        progress.update(download_task, completed=completed, description=f"[green]✓ {current_song[:40]}")
+                
+                # Skipped (already exists)
+                elif "Skipping" in line:
+                    completed += 1
+                    match = re.search(r'"(.+?)"', line)
+                    if match:
+                        downloaded_songs.append(match.group(1))
+                    if download_task:
+                        progress.update(download_task, completed=completed, description=f"[dim]⏭ Already exists")
+                
+                # Error
+                elif "Error" in line or "Unable" in line:
+                    match = re.search(r'"(.+?)"', line)
+                    if match:
+                        song_name = match.group(1)
+                        failed_songs.append(song_name)
+                        if download_task:
+                            progress.update(download_task, description=f"[red]✗ {song_name[:40]}")
+    else:
+        # Fallback without Rich
+        for line in iter(process.stdout.readline, ''):
+            line = line.strip()
+            if not line:
+                continue
+            
+            if "Found" in line and "URL" in line:
+                total_found += 1
+                if total_found % 50 == 0:
+                    print(f"  🔍 Finding songs... {total_found} found", flush=True)
+            
+            elif "Done" in line or "Downloaded" in line:
+                completed += 1
+                print(f"  ✓ Downloaded: {completed}/{total_found}", flush=True)
+            
+            elif "Error" in line or "Unable" in line:
+                match = re.search(r'"(.+?)"', line)
+                if match:
+                    failed_songs.append(match.group(1))
     
     process.wait()
-    return completed, failed_songs, total_found
+    
+    # Show summary with speed
+    elapsed = time.time() - start_time
+    if completed > 0 and elapsed > 0:
+        speed = completed / elapsed * 60  # songs per minute
+        if RICH_AVAILABLE:
+            console.print(f"\n  [dim]Speed: {speed:.1f} songs/min • Time: {elapsed:.0f}s[/dim]")
+        else:
+            print(f"\n  Speed: {speed:.1f} songs/min • Time: {elapsed:.0f}s")
+    
+    return completed, failed_songs, total_found, downloaded_songs
 
 
 def download_spotify(
@@ -87,7 +171,7 @@ def download_spotify(
     audio_format: str = "mp3",
     include_lyrics: bool = False
 ) -> Tuple[bool, List[str]]:
-    """Download from Spotify with auto-retry for failures."""
+    """Download from Spotify with rich progress display."""
     _ensure_event_loop()
     
     url_type = _get_url_type(url)
@@ -101,7 +185,7 @@ def download_spotify(
     else:
         template = "{artist}/{title}.{ext}"
     
-    format_map = {"flac": "flac", "mp3": "mp3", "m4a": "m4a", "opus": "opus"}
+    format_map = {"flac": "flac", "mp3": "mp3", "m4a": "m4a", "opus": "opus", "ogg": "ogg"}
     spotdl_format = format_map.get(audio_format, "mp3")
     
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -117,54 +201,83 @@ def download_spotify(
         "--search-threads", "4",
     ]
     
-    print("\n  📥 Downloading from Spotify...")
-    print("  (Large playlists may take a while - don't worry!)")
-    print()
+    if RICH_AVAILABLE:
+        console.print("\n  [bold]📥 Downloading from Spotify...[/bold]")
+        console.print("  [dim](Large playlists may take a while)[/dim]\n")
+    else:
+        print("\n  📥 Downloading from Spotify...")
+        print("  (Large playlists may take a while)\n")
     
     try:
         # First attempt
-        completed, failed_songs, total_found = _download_with_retry(cmd)
+        completed, failed_songs, total_found, downloaded = _download_with_progress(cmd)
         
         # Auto-retry failed songs (up to 2 more attempts)
         retry_count = 0
         while failed_songs and retry_count < 2:
             retry_count += 1
-            retry_count_display = len(failed_songs)
-            print(f"\n  🔄 Retrying {retry_count_display} failed songs (attempt {retry_count + 1}/3)...")
-            time.sleep(3)  # Wait before retry
             
-            # Build retry URLs from song names
-            # Re-run with same URL (spotdl will skip already downloaded)
-            new_completed, still_failed, _ = _download_with_retry(cmd)
+            if RICH_AVAILABLE:
+                console.print(f"\n  [yellow]🔄 Retrying {len(failed_songs)} failed songs (attempt {retry_count + 1}/3)...[/yellow]")
+            else:
+                print(f"\n  🔄 Retrying {len(failed_songs)} failed songs (attempt {retry_count + 1}/3)...")
+            
+            time.sleep(3)
+            
+            new_completed, still_failed, _, new_downloaded = _download_with_progress(cmd)
             completed += new_completed
+            downloaded.extend(new_downloaded)
             
-            # Update failed list
             if len(still_failed) < len(failed_songs):
-                # Some songs succeeded on retry
                 recovered = len(failed_songs) - len(still_failed)
-                print(f"  ✓ Recovered {recovered} songs on retry", flush=True)
+                if RICH_AVAILABLE:
+                    console.print(f"  [green]✓ Recovered {recovered} songs on retry[/green]")
+                else:
+                    print(f"  ✓ Recovered {recovered} songs on retry")
             
             failed_songs = still_failed
             
             if not failed_songs:
                 break
         
+        # Summary
         print()
-        print(f"  📊 Downloaded: {completed}, Failed: {len(failed_songs)}")
+        if RICH_AVAILABLE:
+            if len(failed_songs) == 0:
+                console.print(f"  [bold green]📊 Downloaded: {completed} songs[/bold green]")
+            else:
+                console.print(f"  [bold]📊 Downloaded: {completed}, [red]Failed: {len(failed_songs)}[/red][/bold]")
+        else:
+            print(f"  📊 Downloaded: {completed}, Failed: {len(failed_songs)}")
         
-        # Show failed songs so user knows which ones
+        # Show failed songs
         if failed_songs:
             print()
-            print("  ❌ Failed songs:")
-            for song in failed_songs:
-                print(f"     • {song}")
+            if RICH_AVAILABLE:
+                console.print("  [red]❌ Failed songs:[/red]")
+                for song in failed_songs:
+                    console.print(f"     [dim]•[/dim] {song}")
+            else:
+                print("  ❌ Failed songs:")
+                for song in failed_songs:
+                    print(f"     • {song}")
         
         print()
         
         return (True, failed_songs)
         
+    except KeyboardInterrupt:
+        if RICH_AVAILABLE:
+            console.print("\n  [yellow]⚠ Download cancelled by user[/yellow]\n")
+        else:
+            print("\n  ⚠ Download cancelled by user\n")
+        return (False, [])
+        
     except Exception as e:
-        print(f"\n  ❌ Error: {e}\n")
+        if RICH_AVAILABLE:
+            console.print(f"\n  [red]❌ Error: {e}[/red]\n")
+        else:
+            print(f"\n  ❌ Error: {e}\n")
         return (False, [])
 
 

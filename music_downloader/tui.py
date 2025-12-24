@@ -33,6 +33,7 @@ from .utils import (
 )
 from .platforms import apple, spotify, youtube
 from .verify import verify_downloads_interactive
+from .config import get_last_download_location, save_last_download_location, load_config
 
 console = Console() if RICH_AVAILABLE else None
 
@@ -105,28 +106,42 @@ def select_download_location() -> Path:
     """Let user select where to save downloads with tab completion."""
     default_dir = get_downloads_dir()
     
+    # Check for saved location from config
+    saved_location = get_last_download_location()
+    
     if not INQUIRER_AVAILABLE:
         print(f"\n  Default: {default_dir}")
+        if saved_location:
+            print(f"  Last used: {saved_location}")
         custom = input("  Path (Enter for default): ").strip()
         if custom:
             path = Path(custom).expanduser().resolve()
             path.mkdir(parents=True, exist_ok=True)
+            save_last_download_location(path)
             return path
         return default_dir
     
     choices = [
         {"name": f"📁 Default: {default_dir}", "value": "default"},
-        {"name": "📝 Enter custom path (with tab completion)", "value": "custom"},
     ]
+    
+    # Add saved location if different from default
+    if saved_location and saved_location != default_dir:
+        choices.insert(0, {"name": f"📍 Last used: {saved_location}", "value": "saved"})
+    
+    choices.append({"name": "📝 Enter custom path (with tab completion)", "value": "custom"})
     
     result = inquirer.select(
         message="Save to:",
         choices=choices,
-        default="default"
+        default="saved" if saved_location and saved_location != default_dir else "default"
     ).execute()
     
     if result == "default":
+        save_last_download_location(default_dir)
         return default_dir
+    elif result == "saved" and saved_location:
+        return saved_location
     else:
         # Use filepath with tab completion
         try:
@@ -141,6 +156,7 @@ def select_download_location() -> Path:
             
             path = Path(path_str).expanduser().resolve()
             path.mkdir(parents=True, exist_ok=True)
+            save_last_download_location(path)
             return path
         except Exception:
             # Fallback to text input
@@ -155,6 +171,7 @@ def select_download_location() -> Path:
             path = Path(path_str).expanduser().resolve()
             try:
                 path.mkdir(parents=True, exist_ok=True)
+                save_last_download_location(path)
                 return path
             except:
                 return default_dir
