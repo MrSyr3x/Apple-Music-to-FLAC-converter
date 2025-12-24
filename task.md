@@ -23,12 +23,14 @@
 - [x] Config system (~/.ripple/config.json)
 - [x] Thumbnail cleanup after downloads
 - [x] Lyrics file cleanup
-- [x] Flatten folder structure option
-- [x] Cookie file auto-detection
+- [x] **Playlist Analysis** (new!)
+  - Duplicate detection
+  - Missing songs detection
+  - Failed songs tracking
+  - Summary with counts
 
 ## In Progress / To Fix
-- [ ] **Show missing songs** - Compare playlist to downloaded files, list what's missing
-- [ ] spotdl sometimes misses songs without error - need comparison check
+- [ ] (None currently)
 
 ## Future Features (Maybe Later)
 - [ ] True FLAC for Spotify (when viable API found)
@@ -45,4 +47,5 @@
 | spotdl missing spotipy dependency | ✅ Fixed | Reinstalled spotipy |
 | Fake FLAC options for Spotify | ✅ Fixed | Removed FLAC/WAV from Spotify/YouTube |
 | Failed songs not listed | ✅ Fixed | Added failed song names display |
-| Downloaded 99/101 but no missing list | 🔄 In Progress | Adding comparison check |
+| Missing songs check not working | ✅ Fixed | Now uses spotipy API directly |
+| No duplicate detection | ✅ Fixed | Added find_duplicates function |

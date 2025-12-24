@@ -410,43 +410,135 @@ def find_missing_songs(url: str, output_dir: Path) -> List[str]:
     return missing
 
 
-def check_and_report_missing(url: str, output_dir: Path) -> List[str]:
+def find_duplicates(url: str) -> List[tuple]:
     """
-    Check for missing songs and report them.
-    Call this after download to show what's missing.
+    Find duplicate tracks in a Spotify playlist.
+    Returns list of (track_name, count) for duplicates.
     """
-    if _get_url_type(url) not in ['playlist', 'album']:
+    from collections import Counter
+    
+    tracks = get_playlist_tracks(url)
+    if not tracks:
         return []
     
-    if RICH_AVAILABLE:
-        console.print("\n  [dim]🔍 Checking for missing songs...[/dim]")
-    else:
-        print("\n  🔍 Checking for missing songs...")
+    counter = Counter(tracks)
+    duplicates = [(track, count) for track, count in counter.items() if count > 1]
+    return duplicates
+
+
+def analyze_playlist(url: str, output_dir: Path, failed_songs: List[str] = None) -> dict:
+    """
+    Comprehensive playlist analysis after download.
+    Shows: duplicates, missing songs, failed songs, summary.
     
+    Returns dict with analysis results.
+    """
+    if _get_url_type(url) not in ['playlist', 'album']:
+        return {}
+    
+    if RICH_AVAILABLE:
+        console.print("\n  [bold]📊 Playlist Analysis[/bold]")
+        console.print("  " + "─" * 40)
+    else:
+        print("\n  📊 Playlist Analysis")
+        print("  " + "─" * 40)
+    
+    results = {
+        'total_in_playlist': 0,
+        'duplicates': [],
+        'missing': [],
+        'failed': failed_songs or [],
+        'downloaded': 0
+    }
+    
+    # Get all tracks from playlist
+    all_tracks = get_playlist_tracks(url)
+    results['total_in_playlist'] = len(all_tracks)
+    
+    if not all_tracks:
+        if RICH_AVAILABLE:
+            console.print("  [dim]Could not analyze playlist[/dim]")
+        else:
+            print("  Could not analyze playlist")
+        return results
+    
+    # 1. Check for duplicates
+    duplicates = find_duplicates(url)
+    results['duplicates'] = duplicates
+    
+    if duplicates:
+        if RICH_AVAILABLE:
+            console.print(f"\n  [yellow]🔁 {len(duplicates)} duplicate songs in playlist:[/yellow]")
+            for track, count in duplicates[:5]:
+                console.print(f"     [dim]{count}x[/dim] {track}")
+            if len(duplicates) > 5:
+                console.print(f"     [dim]... and {len(duplicates) - 5} more[/dim]")
+        else:
+            print(f"\n  🔁 {len(duplicates)} duplicate songs in playlist:")
+            for track, count in duplicates[:5]:
+                print(f"     {count}x {track}")
+            if len(duplicates) > 5:
+                print(f"     ... and {len(duplicates) - 5} more")
+    
+    # 2. Check for missing songs
     missing = find_missing_songs(url, output_dir)
+    results['missing'] = missing
     
     if missing:
         if RICH_AVAILABLE:
-            console.print(f"\n  [yellow]⚠ {len(missing)} songs may be missing:[/yellow]")
-            for song in missing[:10]:  # Show max 10
+            console.print(f"\n  [red]❌ {len(missing)} songs not downloaded:[/red]")
+            for song in missing[:5]:
                 console.print(f"     [dim]•[/dim] {song}")
-            if len(missing) > 10:
-                console.print(f"     [dim]... and {len(missing) - 10} more[/dim]")
+            if len(missing) > 5:
+                console.print(f"     [dim]... and {len(missing) - 5} more[/dim]")
         else:
-            print(f"\n  ⚠ {len(missing)} songs may be missing:")
-            for song in missing[:10]:
+            print(f"\n  ❌ {len(missing)} songs not downloaded:")
+            for song in missing[:5]:
                 print(f"     • {song}")
-            if len(missing) > 10:
-                print(f"     ... and {len(missing) - 10} more")
-    else:
-        if RICH_AVAILABLE:
-            console.print("  [green]✓ All songs downloaded successfully![/green]")
-        else:
-            print("  ✓ All songs downloaded successfully!")
+            if len(missing) > 5:
+                print(f"     ... and {len(missing) - 5} more")
     
-    return missing
+    # 3. Show failed songs (if any)
+    if failed_songs:
+        if RICH_AVAILABLE:
+            console.print(f"\n  [red]⚠ {len(failed_songs)} songs failed during download:[/red]")
+            for song in failed_songs[:5]:
+                console.print(f"     [dim]•[/dim] {song}")
+        else:
+            print(f"\n  ⚠ {len(failed_songs)} songs failed during download:")
+            for song in failed_songs[:5]:
+                print(f"     • {song}")
+    
+    # 4. Count downloaded
+    audio_extensions = {'.mp3', '.m4a', '.flac', '.opus', '.ogg', '.wav'}
+    downloaded_count = sum(1 for f in output_dir.rglob('*') if f.suffix.lower() in audio_extensions)
+    results['downloaded'] = downloaded_count
+    
+    # Calculate unique tracks (playlist total minus duplicate extras)
+    duplicate_extras = sum(count - 1 for _, count in duplicates)
+    unique_tracks = len(all_tracks) - duplicate_extras
+    
+    # 5. Summary
+    if RICH_AVAILABLE:
+        console.print(f"\n  [bold]Summary:[/bold]")
+        console.print(f"     Playlist tracks: {len(all_tracks)}" + (f" ({len(duplicates)} duplicates)" if duplicates else ""))
+        console.print(f"     Unique tracks:   {unique_tracks}")
+        console.print(f"     Downloaded:      {downloaded_count}")
+        if not missing and not failed_songs:
+            console.print(f"     [green]✓ All songs downloaded successfully![/green]")
+    else:
+        print(f"\n  Summary:")
+        print(f"     Playlist tracks: {len(all_tracks)}" + (f" ({len(duplicates)} duplicates)" if duplicates else ""))
+        print(f"     Unique tracks:   {unique_tracks}")
+        print(f"     Downloaded:      {downloaded_count}")
+        if not missing and not failed_songs:
+            print(f"     ✓ All songs downloaded successfully!")
+    
+    print()
+    return results
 
 
 def get_required_dependencies() -> list:
     return ["spotdl", "ffmpeg"]
+
 
