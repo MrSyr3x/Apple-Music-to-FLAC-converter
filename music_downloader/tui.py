@@ -236,19 +236,21 @@ def select_cookie_file() -> Optional[Path]:
 def get_download_options(platform: str) -> dict:
     """Get download preferences with all format options."""
     
-    # All format options with sizes
+    # Apple Music - Real lossless + all common formats
     if platform == "apple":
         formats = [
             {"name": "🍎 AAC-LC  (~4 MB/song)  - Apple Standard", "value": "aac"},
             {"name": "🍎 ALAC    (~25 MB/song) - Apple Lossless", "value": "alac"},
-            {"name": "🎧 MP3     (~4 MB/song)  - Universal", "value": "mp3"},
             {"name": "🎵 FLAC    (~25 MB/song) - Lossless", "value": "flac"},
+            {"name": "🎧 MP3     (~4 MB/song)  - Universal", "value": "mp3"},
+            {"name": "📱 OPUS    (~2 MB/song)  - Smallest", "value": "opus"},
+            {"name": "🔊 OGG     (~3 MB/song)  - Open Format", "value": "ogg"},
         ]
     else:
-        # Spotify/YouTube source from YouTube - max quality is ~256kbps
-        # No point offering FLAC/WAV as they're just upscaled lossy
+        # Spotify/YouTube - No real FLAC available (sources from YouTube)
+        # Being honest with users about quality limitations
         formats = [
-            {"name": "🎧 MP3 320  (~4 MB/song)  - Best Quality", "value": "mp3"},
+            {"name": "🎧 MP3 320  (~4 MB/song)  - Best Available", "value": "mp3"},
             {"name": "🍎 M4A/AAC  (~4 MB/song)  - Apple Compatible", "value": "m4a"},
             {"name": "📱 OPUS     (~2 MB/song)  - Smallest", "value": "opus"},
             {"name": "🔊 OGG      (~3 MB/song)  - Open Format", "value": "ogg"},
