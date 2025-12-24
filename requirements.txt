@@ -3,6 +3,3 @@ gamdl
 rich
 InquirerPy
 mutagen
-# Platforms
-spotdl
-yt-dlp
