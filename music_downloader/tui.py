@@ -362,6 +362,16 @@ def run_download(platform: str, url: str, options: dict, downloads_dir: Path, co
     audio_format = options.get("format", "mp3")
     failed_songs = []
     
+    # Create platform-specific subfolder
+    platform_folders = {
+        "spotify": "Spotify",
+        "youtube": "YouTube Music",
+        "apple": "Apple Music"
+    }
+    platform_folder = platform_folders.get(platform, platform.title())
+    downloads_dir = downloads_dir / platform_folder
+    downloads_dir.mkdir(parents=True, exist_ok=True)
+    
     print()
     print_info(f"Saving to: {downloads_dir}")
     print_info(f"Format: {audio_format.upper()}")

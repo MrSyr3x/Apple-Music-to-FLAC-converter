@@ -14,6 +14,7 @@
 - [x] Apple Music: True lossless (AAC, ALAC, FLAC, MP3, OPUS, OGG)
 - [x] Spotify: Best available (MP3, M4A, OPUS, OGG)
 - [x] YouTube Music: Best available (MP3, M4A, OPUS, OGG)
+- [x] **Platform-specific folders**: Spotify/, YouTube Music/, Apple Music/
 - [x] Auto-retry failed downloads (3 attempts)
 - [x] Custom download location with tab completion
 - [x] Remember last download location
@@ -25,8 +26,7 @@
 - [x] Lyrics file cleanup
 - [x] **Playlist Analysis**
   - Duplicate detection
-  - Missing songs detection (count-based + strict matching)
-  - Saves missing songs to MISSING_SONGS.txt
+  - Missing songs detection (saves to MISSING_SONGS.txt)
   - Failed songs tracking
   - Summary shows mismatch count
 
@@ -47,7 +47,4 @@
 | Fake FLAC options | ✅ Fixed | Removed from menu |
 | Failed songs not listed | ✅ Fixed | Shows at end |
 | Missing songs not detected | ✅ Fixed | Uses count check + file |
-| Duplicate detection | ✅ Fixed | Added find_duplicates |
-| Double-counting downloads | ✅ Fixed | Counts actual files |
-| Fuzzy matching too loose | ✅ Fixed | Stricter algorithm |
 | "All downloaded" when missing | ✅ Fixed | Count-based check |
