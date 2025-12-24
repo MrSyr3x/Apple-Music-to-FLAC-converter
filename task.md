@@ -6,7 +6,7 @@
 - [x] Colored output (green=done, yellow=downloading, red=failed)
 - [x] Download speed display (songs/min)
 - [x] ETA/Time elapsed shown
-- [x] **Failed songs shown immediately** when they fail (all platforms)
+- [x] Failed songs shown immediately when they fail
 - [x] Tab completion for file paths
 
 ## Features We Have
@@ -25,9 +25,10 @@
 - [x] Lyrics file cleanup
 - [x] **Playlist Analysis**
   - Duplicate detection
-  - Missing songs detection (fuzzy matching)
+  - Missing songs detection (count-based + strict matching)
+  - Saves missing songs to MISSING_SONGS.txt
   - Failed songs tracking
-  - Summary with counts
+  - Summary shows mismatch count
 
 ## In Progress / To Fix
 - [ ] (None currently)
@@ -37,18 +38,16 @@
 - [ ] Batch download from text file
 - [ ] Search by song name (without URL)
 - [ ] Sync playlist (download new songs only)
-- [ ] Download queue management
-- [ ] Resume interrupted downloads
 - [ ] GUI version
 
 ## Bugs Raised & Fixed
 | Bug | Status | Notes |
 |-----|--------|-------|
-| spotdl missing spotipy dependency | ✅ Fixed | Reinstalled spotipy |
-| Fake FLAC options for Spotify | ✅ Fixed | Removed from menu |
-| Failed songs not listed | ✅ Fixed | Now shown at end |
-| Missing songs check not working | ✅ Fixed | Uses spotipy API |
-| No duplicate detection | ✅ Fixed | Added find_duplicates |
-| Download count double-counting | ✅ Fixed | Counts actual files |
-| False positives in missing songs | ✅ Fixed | Fuzzy matching |
-| Failed songs not shown immediately | ✅ Fixed | Prints in red when fails |
+| spotdl missing spotipy | ✅ Fixed | Reinstalled |
+| Fake FLAC options | ✅ Fixed | Removed from menu |
+| Failed songs not listed | ✅ Fixed | Shows at end |
+| Missing songs not detected | ✅ Fixed | Uses count check + file |
+| Duplicate detection | ✅ Fixed | Added find_duplicates |
+| Double-counting downloads | ✅ Fixed | Counts actual files |
+| Fuzzy matching too loose | ✅ Fixed | Stricter algorithm |
+| "All downloaded" when missing | ✅ Fixed | Count-based check |

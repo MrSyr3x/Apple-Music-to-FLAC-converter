@@ -469,6 +469,7 @@ def analyze_playlist(url: str, output_dir: Path, failed_songs: List[str] = None)
     """
     Comprehensive playlist analysis after download.
     Shows: duplicates, missing songs, failed songs, summary.
+    Saves missing songs to file for large playlists.
     
     Returns dict with analysis results.
     """
@@ -496,14 +497,26 @@ def analyze_playlist(url: str, output_dir: Path, failed_songs: List[str] = None)
     
     if not all_tracks:
         if RICH_AVAILABLE:
-            console.print("  [dim]Could not analyze playlist[/dim]")
+            console.print("  [dim]Could not analyze playlist (rate limited or error)[/dim]")
         else:
-            print("  Could not analyze playlist")
+            print("  Could not analyze playlist (rate limited or error)")
         return results
     
-    # 1. Check for duplicates
+    # 1. Count downloaded files
+    audio_extensions = {'.mp3', '.m4a', '.flac', '.opus', '.ogg', '.wav'}
+    downloaded_files = []
+    for f in output_dir.rglob('*'):
+        if f.suffix.lower() in audio_extensions:
+            downloaded_files.append(f.stem.lower())
+    
+    downloaded_count = len(downloaded_files)
+    results['downloaded'] = downloaded_count
+    
+    # 2. Check for duplicates
     duplicates = find_duplicates(url)
     results['duplicates'] = duplicates
+    duplicate_extras = sum(count - 1 for _, count in duplicates)
+    unique_tracks = len(all_tracks) - duplicate_extras
     
     if duplicates:
         if RICH_AVAILABLE:
@@ -519,25 +532,94 @@ def analyze_playlist(url: str, output_dir: Path, failed_songs: List[str] = None)
             if len(duplicates) > 5:
                 print(f"     ... and {len(duplicates) - 5} more")
     
-    # 2. Check for missing songs
-    missing = find_missing_songs(url, output_dir)
+    # 3. Find missing songs - use STRICT matching
+    missing = []
+    for track in all_tracks:
+        # Extract title part (after " - ")
+        if ' - ' in track:
+            title = track.split(' - ', 1)[1]
+        else:
+            title = track
+        
+        # Normalize for comparison
+        title_clean = re.sub(r'[^\w\s]', '', title.lower())
+        title_clean = ' '.join(title_clean.split())
+        
+        # Check if ANY downloaded file contains this title (or vice versa)
+        found = False
+        for downloaded in downloaded_files:
+            downloaded_clean = re.sub(r'[^\w\s]', '', downloaded)
+            downloaded_clean = ' '.join(downloaded_clean.split())
+            
+            # Check substring match (stricter)
+            if title_clean in downloaded_clean or downloaded_clean in title_clean:
+                found = True
+                break
+            
+            # Check first 3 words match
+            title_words = title_clean.split()[:3]
+            downloaded_words = downloaded_clean.split()[:3]
+            if title_words and downloaded_words:
+                if title_words == downloaded_words:
+                    found = True
+                    break
+        
+        if not found:
+            missing.append(track)
+    
+    # Remove duplicates from missing (keep unique)
+    seen = set()
+    unique_missing = []
+    for song in missing:
+        if song not in seen:
+            seen.add(song)
+            unique_missing.append(song)
+    missing = unique_missing
     results['missing'] = missing
     
-    if missing:
-        if RICH_AVAILABLE:
-            console.print(f"\n  [red]❌ {len(missing)} songs not downloaded:[/red]")
-            for song in missing[:5]:
-                console.print(f"     [dim]•[/dim] {song}")
-            if len(missing) > 5:
-                console.print(f"     [dim]... and {len(missing) - 5} more[/dim]")
-        else:
-            print(f"\n  ❌ {len(missing)} songs not downloaded:")
-            for song in missing[:5]:
-                print(f"     • {song}")
-            if len(missing) > 5:
-                print(f"     ... and {len(missing) - 5} more")
+    # 4. Check if download count doesn't match (backup detection)
+    count_mismatch = downloaded_count < unique_tracks
     
-    # 3. Show failed songs (if any)
+    # 5. Show missing songs
+    if missing or count_mismatch:
+        actual_missing = max(len(missing), unique_tracks - downloaded_count)
+        
+        if RICH_AVAILABLE:
+            console.print(f"\n  [red]❌ {actual_missing} songs not downloaded:[/red]")
+            if missing:
+                for song in missing[:10]:
+                    console.print(f"     [dim]•[/dim] {song}")
+                if len(missing) > 10:
+                    console.print(f"     [dim]... and {len(missing) - 10} more[/dim]")
+            else:
+                console.print(f"     [dim](Could not identify specific songs)[/dim]")
+        else:
+            print(f"\n  ❌ {actual_missing} songs not downloaded:")
+            if missing:
+                for song in missing[:10]:
+                    print(f"     • {song}")
+                if len(missing) > 10:
+                    print(f"     ... and {len(missing) - 10} more")
+            else:
+                print(f"     (Could not identify specific songs)")
+        
+        # Save missing songs to file for large playlists
+        if missing:
+            missing_file = output_dir / "MISSING_SONGS.txt"
+            try:
+                with open(missing_file, 'w') as f:
+                    f.write(f"Missing songs from playlist ({len(missing)} total):\n")
+                    f.write("=" * 50 + "\n\n")
+                    for song in missing:
+                        f.write(f"• {song}\n")
+                if RICH_AVAILABLE:
+                    console.print(f"\n  [yellow]📄 Full list saved to: MISSING_SONGS.txt[/yellow]")
+                else:
+                    print(f"\n  📄 Full list saved to: MISSING_SONGS.txt")
+            except:
+                pass
+    
+    # 6. Show failed songs (if any)
     if failed_songs:
         if RICH_AVAILABLE:
             console.print(f"\n  [red]⚠ {len(failed_songs)} songs failed during download:[/red]")
@@ -548,30 +630,27 @@ def analyze_playlist(url: str, output_dir: Path, failed_songs: List[str] = None)
             for song in failed_songs[:5]:
                 print(f"     • {song}")
     
-    # 4. Count downloaded
-    audio_extensions = {'.mp3', '.m4a', '.flac', '.opus', '.ogg', '.wav'}
-    downloaded_count = sum(1 for f in output_dir.rglob('*') if f.suffix.lower() in audio_extensions)
-    results['downloaded'] = downloaded_count
-    
-    # Calculate unique tracks (playlist total minus duplicate extras)
-    duplicate_extras = sum(count - 1 for _, count in duplicates)
-    unique_tracks = len(all_tracks) - duplicate_extras
-    
-    # 5. Summary
+    # 7. Summary
     if RICH_AVAILABLE:
         console.print(f"\n  [bold]Summary:[/bold]")
         console.print(f"     Playlist tracks: {len(all_tracks)}" + (f" ({len(duplicates)} duplicates)" if duplicates else ""))
         console.print(f"     Unique tracks:   {unique_tracks}")
         console.print(f"     Downloaded:      {downloaded_count}")
-        if not missing and not failed_songs:
+        if downloaded_count >= unique_tracks and not missing and not failed_songs:
             console.print(f"     [green]✓ All songs downloaded successfully![/green]")
+        elif downloaded_count < unique_tracks:
+            diff = unique_tracks - downloaded_count
+            console.print(f"     [red]✗ Missing: {diff} songs[/red]")
     else:
         print(f"\n  Summary:")
         print(f"     Playlist tracks: {len(all_tracks)}" + (f" ({len(duplicates)} duplicates)" if duplicates else ""))
         print(f"     Unique tracks:   {unique_tracks}")
         print(f"     Downloaded:      {downloaded_count}")
-        if not missing and not failed_songs:
+        if downloaded_count >= unique_tracks and not missing and not failed_songs:
             print(f"     ✓ All songs downloaded successfully!")
+        elif downloaded_count < unique_tracks:
+            diff = unique_tracks - downloaded_count
+            print(f"     ✗ Missing: {diff} songs")
     
     print()
     return results
