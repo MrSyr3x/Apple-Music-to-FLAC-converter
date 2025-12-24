@@ -143,11 +143,17 @@ def download_apple_music(
                         progress.update(download_task, completed=completed, description=f"[green]✓ {current_song or 'Saved'}")
                     
                     # Error - show failed track immediately
-                    elif "Error" in line or "Failed" in line or "error" in line.lower():
+                    elif "Error" in line or "error" in line.lower():
                         if current_song:
                             console.print(f"\n  [red]✗ Failed: {current_song}[/red]")
                         else:
                             console.print(f"\n  [red]✗ Error: {line[:60]}[/red]")
+                    
+                    # No downloadable media - cookies issue
+                    elif "No downloadable" in line or "skipping" in line.lower():
+                        if current_song:
+                            console.print(f"\n  [red]✗ Failed: {current_song}[/red]")
+                            console.print(f"    [dim]Reason: Not available (check cookies/subscription)[/dim]")
         else:
             # Fallback without Rich
             for line in iter(process.stdout.readline, ''):
