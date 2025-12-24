@@ -23,9 +23,9 @@
 - [x] Config system (~/.ripple/config.json)
 - [x] Thumbnail cleanup after downloads
 - [x] Lyrics file cleanup
-- [x] **Playlist Analysis** (new!)
+- [x] **Playlist Analysis**
   - Duplicate detection
-  - Missing songs detection
+  - Missing songs detection (fuzzy matching)
   - Failed songs tracking
   - Summary with counts
 
@@ -49,3 +49,5 @@
 | Failed songs not listed | ✅ Fixed | Added failed song names display |
 | Missing songs check not working | ✅ Fixed | Now uses spotipy API directly |
 | No duplicate detection | ✅ Fixed | Added find_duplicates function |
+| Download count double-counting on retry | ✅ Fixed | Now counts actual files |
+| False positives in missing songs | ✅ Fixed | Improved fuzzy matching |

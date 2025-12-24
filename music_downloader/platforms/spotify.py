@@ -240,15 +240,19 @@ def download_spotify(
             if not failed_songs:
                 break
         
+        # Count actual downloaded files instead of using counter (which double-counts on retry)
+        audio_extensions = {'.mp3', '.m4a', '.flac', '.opus', '.ogg', '.wav'}
+        actual_downloaded = sum(1 for f in output_dir.rglob('*') if f.suffix.lower() in audio_extensions)
+        
         # Summary
         print()
         if RICH_AVAILABLE:
             if len(failed_songs) == 0:
-                console.print(f"  [bold green]📊 Downloaded: {completed} songs[/bold green]")
+                console.print(f"  [bold green]📊 Downloaded: {actual_downloaded} songs[/bold green]")
             else:
-                console.print(f"  [bold]📊 Downloaded: {completed}, [red]Failed: {len(failed_songs)}[/red][/bold]")
+                console.print(f"  [bold]📊 Downloaded: {actual_downloaded}, [red]Failed: {len(failed_songs)}[/red][/bold]")
         else:
-            print(f"  📊 Downloaded: {completed}, Failed: {len(failed_songs)}")
+            print(f"  📊 Downloaded: {actual_downloaded}, Failed: {len(failed_songs)}")
         
         # Show failed songs
         if failed_songs:
@@ -366,9 +370,27 @@ def get_playlist_tracks(url: str) -> List[str]:
         return []
 
 
+def _normalize_title(title: str) -> str:
+    """Normalize a song title for comparison."""
+    # Lowercase
+    title = title.lower()
+    # Remove common patterns
+    title = re.sub(r'\s*\(.*?\)\s*', ' ', title)  # Remove (anything in parens)
+    title = re.sub(r'\s*\[.*?\]\s*', ' ', title)  # Remove [anything in brackets]
+    title = re.sub(r'\s*-\s*remix.*', '', title)  # Remove "- remix..."
+    title = re.sub(r'\s*feat\.?\s*.*', '', title)  # Remove "feat..."
+    title = re.sub(r'\s*ft\.?\s*.*', '', title)   # Remove "ft..."
+    # Remove special characters
+    title = re.sub(r'[^\w\s]', '', title)
+    # Normalize whitespace
+    title = ' '.join(title.split())
+    return title.strip()
+
+
 def find_missing_songs(url: str, output_dir: Path) -> List[str]:
     """
     Compare playlist tracks with downloaded files to find missing songs.
+    Uses fuzzy matching to reduce false positives.
     Returns list of missing track names.
     """
     # Get all tracks from playlist
@@ -377,30 +399,43 @@ def find_missing_songs(url: str, output_dir: Path) -> List[str]:
     if not all_tracks:
         return []
     
-    # Get downloaded files
+    # Get downloaded files and normalize them
     audio_extensions = {'.mp3', '.m4a', '.flac', '.opus', '.ogg', '.wav'}
-    downloaded_files = []
+    downloaded_normalized = []
     
     for f in output_dir.rglob('*'):
         if f.suffix.lower() in audio_extensions:
-            # Get filename without extension
-            downloaded_files.append(f.stem.lower())
+            normalized = _normalize_title(f.stem)
+            downloaded_normalized.append(normalized)
     
     # Find missing
     missing = []
     for track in all_tracks:
-        # Normalize track name for comparison
-        track_lower = track.lower()
-        # Check if any part of the track name is in downloaded files
+        # Extract title part (after " - ")
+        if ' - ' in track:
+            title = track.split(' - ', 1)[1]
+        else:
+            title = track
+        
+        title_normalized = _normalize_title(title)
+        
+        # Check if any downloaded file matches (partial match)
         found = False
-        for downloaded in downloaded_files:
-            # Check if title part matches (after the " - ")
-            if ' - ' in track:
-                title_part = track.split(' - ', 1)[1].lower()
-                if title_part in downloaded or downloaded in title_part:
+        for downloaded in downloaded_normalized:
+            # Check if significant words match
+            title_words = set(title_normalized.split())
+            downloaded_words = set(downloaded.split())
+            
+            # If most words match (>50%), consider it found
+            if title_words and downloaded_words:
+                common = title_words & downloaded_words
+                match_ratio = len(common) / min(len(title_words), len(downloaded_words))
+                if match_ratio >= 0.5:
                     found = True
                     break
-            if track_lower in downloaded or downloaded in track_lower:
+            
+            # Also check direct substring match
+            if title_normalized in downloaded or downloaded in title_normalized:
                 found = True
                 break
         
