@@ -122,14 +122,26 @@ def _download_with_progress(cmd: list) -> Tuple[int, List[str], int, List[str]]:
                     if download_task:
                         progress.update(download_task, completed=completed, description=f"[dim]⏭ Already exists")
                 
-                # Error
-                elif "Error" in line or "Unable" in line:
+                # Error - capture reason
+                elif "Error" in line or "Unable" in line or "No results" in line:
                     match = re.search(r'"(.+?)"', line)
                     if match:
                         song_name = match.group(1)
-                        failed_songs.append(song_name)
+                        # Try to extract reason
+                        reason = "Could not find on YouTube"
+                        if "No results" in line:
+                            reason = "No results found"
+                        elif "Unable to download" in line:
+                            reason = "Unable to download"
+                        elif "403" in line or "forbidden" in line.lower():
+                            reason = "Access forbidden"
+                        elif "timeout" in line.lower():
+                            reason = "Connection timeout"
+                        
+                        failed_songs.append((song_name, reason))
                         # Print failed song name immediately
                         console.print(f"\n  [red]✗ Failed: {song_name}[/red]")
+                        console.print(f"    [dim]Reason: {reason}[/dim]")
                         if download_task:
                             progress.update(download_task, description=f"[red]✗ {song_name[:40]}")
     else:
@@ -148,12 +160,16 @@ def _download_with_progress(cmd: list) -> Tuple[int, List[str], int, List[str]]:
                 completed += 1
                 print(f"  ✓ Downloaded: {completed}/{total_found}", flush=True)
             
-            elif "Error" in line or "Unable" in line:
+            elif "Error" in line or "Unable" in line or "No results" in line:
                 match = re.search(r'"(.+?)"', line)
                 if match:
                     song_name = match.group(1)
-                    failed_songs.append(song_name)
+                    reason = "Could not find on YouTube"
+                    if "No results" in line:
+                        reason = "No results found"
+                    failed_songs.append((song_name, reason))
                     print(f"\n  ✗ Failed: {song_name}", flush=True)
+                    print(f"    Reason: {reason}", flush=True)
     
     process.wait()
     
@@ -258,17 +274,27 @@ def download_spotify(
         else:
             print(f"  📊 Downloaded: {actual_downloaded}, Failed: {len(failed_songs)}")
         
-        # Show failed songs
+        # Show failed songs with reasons
         if failed_songs:
             print()
             if RICH_AVAILABLE:
-                console.print("  [red]❌ Failed songs:[/red]")
-                for song in failed_songs:
-                    console.print(f"     [dim]•[/dim] {song}")
+                console.print("  [red]❌ Failed to download:[/red]")
+                for item in failed_songs:
+                    if isinstance(item, tuple):
+                        song, reason = item
+                        console.print(f"     [dim]•[/dim] {song}")
+                        console.print(f"       [dim]└ {reason}[/dim]")
+                    else:
+                        console.print(f"     [dim]•[/dim] {item}")
             else:
-                print("  ❌ Failed songs:")
-                for song in failed_songs:
-                    print(f"     • {song}")
+                print("  ❌ Failed to download:")
+                for item in failed_songs:
+                    if isinstance(item, tuple):
+                        song, reason = item
+                        print(f"     • {song}")
+                        print(f"       └ {reason}")
+                    else:
+                        print(f"     • {item}")
         
         print()
         

@@ -6,7 +6,7 @@
 - [x] Colored output (green=done, yellow=downloading, red=failed)
 - [x] Download speed display (songs/min)
 - [x] ETA/Time elapsed shown
-- [x] Failed songs shown immediately when they fail
+- [x] Failed songs shown immediately with **reason why**
 - [x] Tab completion for file paths
 
 ## Features We Have
@@ -16,6 +16,7 @@
 - [x] YouTube Music: Best available (MP3, M4A, OPUS, OGG)
 - [x] **Platform-specific folders**: Spotify/, YouTube Music/, Apple Music/
 - [x] Auto-retry failed downloads (3 attempts)
+- [x] **Manual retry prompt**: Failed songs → "Retry via YouTube? (y/n)"
 - [x] Custom download location with tab completion
 - [x] Remember last download location
 - [x] Cookie-based auth for Apple Music
@@ -27,7 +28,7 @@
 - [x] **Playlist Analysis**
   - Duplicate detection
   - Missing songs detection (saves to MISSING_SONGS.txt)
-  - Failed songs tracking
+  - Failed songs with reasons
   - Summary shows mismatch count
 
 ## In Progress / To Fix
@@ -45,6 +46,6 @@
 |-----|--------|-------|
 | spotdl missing spotipy | ✅ Fixed | Reinstalled |
 | Fake FLAC options | ✅ Fixed | Removed from menu |
-| Failed songs not listed | ✅ Fixed | Shows at end |
+| Failed songs not listed | ✅ Fixed | Shows name + reason |
 | Missing songs not detected | ✅ Fixed | Uses count check + file |
 | "All downloaded" when missing | ✅ Fixed | Count-based check |

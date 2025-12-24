@@ -394,6 +394,25 @@ def run_download(platform: str, url: str, options: dict, downloads_dir: Path, co
         )
         # Check for missing songs (compare playlist to downloaded files)
         spotify.analyze_playlist(url, downloads_dir, failed_songs)
+        
+        # Save failed songs to file for manual handling
+        if failed_songs:
+            failed_file = downloads_dir / "FAILED_SONGS.txt"
+            try:
+                with open(failed_file, 'w') as f:
+                    f.write(f"Failed to download ({len(failed_songs)} songs):\n")
+                    f.write("=" * 50 + "\n\n")
+                    for item in failed_songs:
+                        if isinstance(item, tuple):
+                            song, reason = item
+                            f.write(f"• {song}\n  └ {reason}\n\n")
+                        else:
+                            f.write(f"• {item}\n\n")
+                    f.write("\nTry searching these manually on Spotify or other sources.\n")
+                print()
+                print_info(f"Failed songs saved to: {failed_file.name}")
+            except:
+                pass
     elif platform == "youtube":
         success = youtube.download_youtube(
             url=url,
