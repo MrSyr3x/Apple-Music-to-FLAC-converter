@@ -138,3 +138,20 @@ def delete_lyrics_files(downloads_dir: Path) -> int:
                 deleted_count += 1
     
     return deleted_count
+
+
+def delete_thumbnail_files(downloads_dir: Path) -> int:
+    """
+    Delete leftover thumbnail files (.webp, .jpg, .png in audio folders).
+    
+    Returns count of files deleted.
+    """
+    thumbnail_extensions = {'.webp', '.jpg', '.jpeg', '.png'}
+    deleted_count = 0
+    
+    for thumb_file in downloads_dir.rglob('*'):
+        if thumb_file.suffix.lower() in thumbnail_extensions:
+            if delete_file_safely(thumb_file):
+                deleted_count += 1
+    
+    return deleted_count

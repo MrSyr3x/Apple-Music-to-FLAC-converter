@@ -1,52 +1,21 @@
 #!/bin/bash
 #
-# 🎵 Music Downloader - One-click launcher
-# Just run: ./start.sh
+# 🌊 Ripple - Start Script
 #
 
-set -e
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
-echo ""
-echo "🎵 Music Downloader"
-echo "==================="
-echo ""
-
-# Check Python
-if ! command -v python3 &> /dev/null; then
-    echo "❌ Python 3 is required but not installed."
-    echo "   Install from: https://www.python.org/downloads/"
-    exit 1
-fi
-
-# Check FFmpeg
-if ! command -v ffmpeg &> /dev/null; then
-    echo "❌ FFmpeg is required but not installed."
-    echo "   Install with: brew install ffmpeg"
-    exit 1
-fi
-
-# Create virtual environment if it doesn't exist
-if [ ! -d "venv" ]; then
-    echo "📦 Setting up virtual environment..."
-    python3 -m venv venv
-fi
-
 # Activate virtual environment
-source venv/bin/activate
+if [ -d "venv" ]; then
+    source venv/bin/activate
+else
+    echo "Setting up first time..."
+    python3 -m venv venv
+    source venv/bin/activate
+    pip install --quiet -r requirements.txt
+fi
 
-# Install/update dependencies
-echo "📦 Checking dependencies..."
-pip install -q -r requirements.txt
-
-# Run the application
-echo ""
+# Run the downloader
 python download.py
-
-# Deactivate on exit
-deactivate 2>/dev/null || true
-
-echo ""
-echo "👋 Goodbye!"

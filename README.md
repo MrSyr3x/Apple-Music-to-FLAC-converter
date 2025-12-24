@@ -1,133 +1,108 @@
-# 🎵 Music Downloader
+# 🌊 Ripple
 
-A beautiful, user-friendly music downloader with support for **Apple Music**, **Spotify**, and **YouTube Music**.
+A beautiful music downloader for **Spotify**, **YouTube Music**, and **Apple Music**.
 
-![Platforms](https://img.shields.io/badge/Platforms-Apple%20Music%20%7C%20Spotify%20%7C%20YouTube-blue)
-![License](https://img.shields.io/badge/License-MIT-green)
-
-## ⚡ One-Line Install
+## ⚡ Quick Install
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/MrSyr3x/Apple-Music-to-FLAC-converter/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/MrSyr3x/ripple/main/install.sh | bash
 ```
-
-This will:
-- Ask where you want to install
-- Set up everything automatically
-- Create a `music-dl` command for easy access
-- Ask if you want to start now or later
 
 ## ✨ Features
 
-- 🎨 **Interactive TUI** - No command-line knowledge needed
-- 🍎 **Apple Music** - High-quality AAC/ALAC with lyrics
-- 🎧 **Spotify** - Downloads via spotdl
+- 🎨 **Beautiful TUI** - No commands to memorize
+- 🎧 **Spotify** - Tracks, albums, playlists
 - ▶️ **YouTube Music** - Direct downloads
-- � **Custom Save Location** - SD card, external drive, anywhere!
-- 🔄 **Auto Retry** - Failed songs retry via YouTube search
-- 🔒 **Security First** - Option to delete cookies after download
+- 🍎 **Apple Music** - With cookies
+- 📁 **Custom Location** - Save anywhere
+- 🔄 **Auto Retry** - Failed songs retry via YouTube
+- 📊 **Verification** - Checks artwork & metadata
 
-## 🚀 Quick Start
+## 📋 Requirements
 
-### After Installation
-
+### 🍎 macOS
 ```bash
-music-dl
+brew install ffmpeg python
 ```
 
-Or navigate to install folder:
+### 🪟 Windows
 ```bash
-./start.sh
+# Using winget
+winget install ffmpeg python
+
+# Or using chocolatey
+choco install ffmpeg python
 ```
 
-### Manual Setup
+### 🐧 Linux
+C'mon, you're on Linux... do I really have to tell you, my Linux geek buddy? 😎
 
 ```bash
-git clone https://github.com/MrSyr3x/Apple-Music-to-FLAC-converter.git
-cd Apple-Music-to-FLAC-converter
-./start.sh
+# You already know:
+sudo apt install ffmpeg python3
+# or
+sudo pacman -S ffmpeg python
+# etc.
+```
+
+## 🚀 Usage
+
+After installation:
+```bash
+ripple        # Use the global command
+# or
+./start.sh   # From install directory
+```
+
+## 🎵 Formats
+
+| Format | Size/song | Best for |
+|--------|-----------|----------|
+| MP3 | ~4 MB | Universal |
+| OPUS | ~2 MB | Smallest |
+| OGG | ~3 MB | Open |
+| M4A | ~4 MB | Apple |
+| FLAC | ~25 MB | Lossless |
+| WAV | ~40 MB | Editing |
+
+## 🍪 Apple Music Setup
+
+**Chrome/Firefox only** (Safari is a headache, trust me):
+
+1. Install [Get cookies.txt LOCALLY](https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc)
+2. Go to music.apple.com → Log in
+3. Click extension → Export
+4. Run Ripple → Select the file
+
+## 📂 Output Structure
+
+```
+downloads/
+├── Single Track.mp3           # Single songs
+├── Playlist Name/             # Playlists
+│   ├── Song 1.mp3
+│   └── Song 2.mp3
+└── Album Name/                # Albums
+    ├── Track 1.mp3
+    └── Track 2.mp3
 ```
 
 ## 🗑️ Uninstall
 
 ```bash
-cd ~/music-downloader  # or your install path
 ./uninstall.sh
 ```
 
-Downloads are kept safe during uninstall.
-
-## 📋 Requirements
-
-- **Python 3.10+**
-- **FFmpeg** - Install with `brew install ffmpeg`
-
-## 🎵 Platform Guide
-
-### 🍎 Apple Music
-Requires cookies (one-time setup):
-
-1. Install browser extension:
-   - **Chrome**: [Get cookies.txt LOCALLY](https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc)
-   - **Firefox**: [Export Cookies](https://addons.mozilla.org/addon/export-cookies-txt)
-2. Go to [music.apple.com](https://music.apple.com) and log in
-3. Export cookies (save anywhere - we'll find it!)
-4. Run the app and select your cookie file
-
-> 🔒 **Security**: Your cookies stay local. The app offers to delete them after download.
-
-### 🎧 Spotify
-Works with spotdl - just paste your URL:
-- Tracks, albums, playlists all supported
-- Downloads from YouTube with Spotify metadata
-- Auto-retry for failed songs
-
-### ▶️ YouTube Music
-No login required! Just paste your URL.
-- Works with any YouTube or YouTube Music URL
-- Highest quality available
-
-## 🎵 Audio Formats
-
-Choose from 6 formats:
-
-| Format | Quality | Best For |
-|--------|---------|----------|
-| **FLAC** | Lossless | Audiophiles |
-| **MP3** | 320 kbps | Universal |
-| **M4A** | 256 kbps | Apple devices |
-| **WAV** | Lossless | Audio editing |
-| **OGG** | Variable | Open source |
-| **OPUS** | Best | Streaming |
-
-## 📂 Smart Folder Structure
-
-- **Single tracks** → `downloads/song.mp3`
-- **Playlists** → `downloads/PlaylistName/song.mp3`
-- **Albums** → `downloads/AlbumName/song.mp3`
-
-## 🔧 Troubleshooting
-
-| Issue | Solution |
-|-------|----------|
-| "FFmpeg not found" | Run `brew install ffmpeg` |
-| Cookie not detected | Save with "cookie" in filename |
-| Download fails | Check URL is valid |
-| Some songs fail | Say "yes" to retry via YouTube |
-
-## 📄 License
-
-MIT License - See [LICENSE](LICENSE) for details.
+Your downloaded music is kept safe.
 
 ## 🙏 Credits
 
-- [gamdl](https://github.com/glomatico/gamdl) - Apple Music downloader
-- [spotdl](https://github.com/spotDL/spotify-downloader) - Spotify downloader
-- [yt-dlp](https://github.com/yt-dlp/yt-dlp) - YouTube downloader
-- [rich](https://github.com/Textualize/rich) - Beautiful terminal formatting
+- [spotdl](https://github.com/spotDL/spotify-downloader)
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp)
+- [gamdl](https://github.com/glomatico/gamdl)
 
 ---
 
 <p align="center">
-Made with ❤️ for music lovers
+Made with 🌊 for music lovers
 </p>

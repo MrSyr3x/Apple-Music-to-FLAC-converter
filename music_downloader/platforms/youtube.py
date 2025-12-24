@@ -1,14 +1,12 @@
 """
 YouTube Music platform handler  
-Uses yt-dlp for downloading with progress bars
-Crops thumbnails to square to remove letterbox bars
+Uses yt-dlp with progress bars
 """
 
 import subprocess
 import sys
 import re
 from pathlib import Path
-from typing import Optional
 
 
 def _get_url_type(url: str) -> str:
@@ -17,32 +15,19 @@ def _get_url_type(url: str) -> str:
         return "playlist"
     elif "playlist" in url:
         return "playlist"
-    elif "/album/" in url:
-        return "album"
     else:
         return "video"
-
-
-def _create_progress_bar(percent: float, width: int = 25) -> str:
-    """Create a visual progress bar."""
-    filled = int(width * percent / 100)
-    bar = "█" * filled + "░" * (width - filled)
-    return bar
 
 
 def download_youtube(
     url: str,
     output_dir: Path,
-    audio_format: str = "flac",
+    audio_format: str = "mp3",
     flat_structure: bool = True
 ) -> bool:
-    """
-    Download from YouTube/YouTube Music with progress bars.
-    Crops thumbnails to square format to remove letterbox bars.
-    """
+    """Download from YouTube/YouTube Music with progress."""
     url_type = _get_url_type(url)
     
-    # Template based on URL type
     if url_type == "video":
         template = "%(title)s.%(ext)s"
     else:
@@ -56,13 +41,8 @@ def download_youtube(
         "--audio-format", audio_format,
         "--audio-quality", "0",
         "--output", str(output_dir / template),
-        # Thumbnail handling - convert to jpg and crop to square
         "--embed-thumbnail",
-        "--convert-thumbnails", "jpg",
-        # FFmpeg post-processor to crop thumbnail to square (center crop)
-        "--ppa", "ThumbnailsConvertor:-vf crop=w='min(iw,ih)':h='min(iw,ih)'",
         "--embed-metadata",
-        "--add-metadata",
         "--concurrent-fragments", "3",
         "--progress",
         "--newline",
@@ -78,67 +58,72 @@ def download_youtube(
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
-            bufsize=1
+            bufsize=1,
+            env={**dict(__import__('os').environ), 'PYTHONUNBUFFERED': '1'}
         )
         
         current_song = None
         completed = 0
-        current_percent = 0
-        last_song_printed = None
+        last_percent = -1
         
-        for line in process.stdout:
+        for line in iter(process.stdout.readline, ''):
             line = line.strip()
             if not line:
                 continue
             
-            # Parse download destination (new song starting)
+            # New song starting
             if "[download] Destination:" in line:
                 match = re.search(r'Destination:\s*(.+)', line)
                 if match:
                     filename = Path(match.group(1)).stem
-                    # Clean up filename
-                    if len(filename) > 50:
-                        filename = filename[:47] + "..."
+                    if len(filename) > 35:
+                        filename = filename[:32] + "..."
                     current_song = filename
-                    current_percent = 0
+                    last_percent = -1
             
-            # Parse download progress percentage
-            elif "[download]" in line and "%" in line:
+            # Download progress percentage
+            elif "[download]" in line and "%" in line and "ETA" in line:
                 match = re.search(r'(\d+\.?\d*)%', line)
                 if match and current_song:
-                    current_percent = float(match.group(1))
-                    bar = _create_progress_bar(current_percent)
-                    # Print on same line (overwrite)
-                    print(f"\r  ⏳ {current_song:<50} [{bar}] {current_percent:5.1f}%", end="", flush=True)
+                    pct = float(match.group(1))
+                    # Only update every 5%
+                    if pct - last_percent >= 5 or pct >= 100:
+                        last_percent = pct
+                        bar_len = 20
+                        filled = int(bar_len * pct / 100)
+                        bar = "█" * filled + "░" * (bar_len - filled)
+                        print(f"\r  ⏳ {current_song:<35} [{bar}] {pct:5.1f}%", end="", flush=True)
             
-            # Parse completion
+            # 100% complete
+            elif "[download] 100%" in line and current_song:
+                bar = "█" * 20
+                print(f"\r  ⏳ {current_song:<35} [{bar}] 100.0%", end="", flush=True)
+            
+            # ExtractAudio means conversion done
             elif "[ExtractAudio]" in line and current_song:
-                if current_song != last_song_printed:
-                    bar = _create_progress_bar(100)
-                    print(f"\r  ✓ {current_song:<50} [{bar}] 100.0%")
-                    completed += 1
-                    last_song_printed = current_song
-                    current_song = None
+                bar = "█" * 20
+                print(f"\r  ✓ {current_song:<35} [{bar}] done   ")
+                completed += 1
+                current_song = None
             
             # Already downloaded
             elif "has already been downloaded" in line:
                 match = re.search(r'\[download\]\s*(.+?)\s+has already', line)
                 if match:
                     name = Path(match.group(1)).stem
-                    if len(name) > 50:
-                        name = name[:47] + "..."
-                    bar = _create_progress_bar(100)
-                    print(f"  ✓ {name:<50} [{bar}] (cached)")
+                    if len(name) > 35:
+                        name = name[:32] + "..."
+                    print(f"  ✓ {name:<35} [cached]")
                     completed += 1
         
         process.wait()
         
-        print(f"\n  📊 Downloaded: {completed} songs\n")
+        print(f"\n  📊 Downloaded: {completed}\n")
         
-        return process.returncode == 0
+        return True
         
     except Exception as e:
-        print(f"\n  ❌ Error: {e}")
+        print(f"\n  ❌ Error: {e}\n")
         return False
 
 

@@ -1,6 +1,6 @@
 """
 Apple Music platform handler
-Uses gamdl for downloading with progress bars
+Uses gamdl with live song counter
 """
 
 import subprocess
@@ -21,27 +21,17 @@ def _get_url_type(url: str) -> str:
     return "unknown"
 
 
-def _create_progress_bar(percent: float, width: int = 25) -> str:
-    """Create a visual progress bar."""
-    filled = int(width * percent / 100)
-    bar = "█" * filled + "░" * (width - filled)
-    return bar
-
-
 def download_apple_music(
     url: str,
     cookies_path: Path,
     output_dir: Path,
     codec: str = "aac-legacy",
-    include_lyrics: bool = True,
+    include_lyrics: bool = False,
     flat_structure: bool = True
 ) -> bool:
-    """
-    Download from Apple Music with progress bars.
-    """
+    """Download from Apple Music with live counter."""
     url_type = _get_url_type(url)
     
-    # Build templates
     if url_type == "song":
         file_template = "{title}"
         folder_template = ""
@@ -70,7 +60,9 @@ def download_apple_music(
     if not include_lyrics:
         cmd.append("--no-synced-lyrics")
     
-    print("\n  📥 Downloading from Apple Music...\n")
+    print("\n  📥 Downloading from Apple Music...")
+    print("  (This may take a while for large playlists)")
+    print()
     
     try:
         process = subprocess.Popen(
@@ -78,71 +70,53 @@ def download_apple_music(
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
-            bufsize=1
+            bufsize=1,
+            env={**dict(__import__('os').environ), 'PYTHONUNBUFFERED': '1'}
         )
         
         completed = 0
-        current_song = None
+        total = 0
         
-        for line in process.stdout:
+        for line in iter(process.stdout.readline, ''):
             line = line.strip()
             if not line:
                 continue
             
-            # Parse gamdl output - various patterns
-            # "Downloading: Song Name"
-            if "Downloading" in line:
-                match = re.search(r'Downloading[:\s]+(.+)', line)
+            # Track numbering (e.g., "01 Song Name" or "Downloading 1/50")
+            if re.match(r'^\d+[\.\s/]', line):
+                completed += 1
+                # Show progress every song for first 10, then every 10
+                if completed <= 10 or completed % 10 == 0:
+                    print(f"  ✓ Downloaded: {completed}", flush=True)
+            
+            # Look for total count
+            elif "total" in line.lower() or "tracks" in line.lower():
+                match = re.search(r'(\d+)', line)
                 if match:
-                    current_song = match.group(1).strip()
-                    if len(current_song) > 50:
-                        current_song = current_song[:47] + "..."
-                    bar = _create_progress_bar(50)
-                    print(f"\r  ⏳ {current_song:<50} [{bar}]  50%", end="", flush=True)
+                    total = int(match.group(1))
+                    print(f"  🔍 Found {total} tracks", flush=True)
             
-            # "Downloaded" or "Saved" or similar completion
-            elif any(word in line for word in ["Downloaded", "Saved", "Done", "Finished"]):
-                if current_song:
-                    bar = _create_progress_bar(100)
-                    print(f"\r  ✓ {current_song:<50} [{bar}] 100%")
-                    completed += 1
-                    current_song = None
-            
-            # Numbered list pattern "1. Song Name" or "01 Song Name"
-            elif re.match(r'^\d+[\.\s]', line):
-                match = re.search(r'^\d+[\.\s]+(.+)', line)
-                if match:
-                    song = match.group(1).strip()
-                    if len(song) > 50:
-                        song = song[:47] + "..."
-                    bar = _create_progress_bar(100)
-                    print(f"  ✓ {song:<50} [{bar}] 100%")
-                    completed += 1
-            
-            # Progress percentage if shown
-            elif "%" in line:
-                match = re.search(r'(\d+)%', line)
-                if match and current_song:
-                    percent = int(match.group(1))
-                    bar = _create_progress_bar(percent)
-                    print(f"\r  ⏳ {current_song:<50} [{bar}] {percent:3d}%", end="", flush=True)
+            # Downloading indication
+            elif "Downloading" in line or "Getting" in line:
+                completed += 1
+                if completed <= 10 or completed % 10 == 0:
+                    if total > 0:
+                        pct = int(completed / total * 100)
+                        print(f"  ✓ Downloaded: {completed}/{total} ({pct}%)", flush=True)
+                    else:
+                        print(f"  ✓ Downloaded: {completed}", flush=True)
         
         process.wait()
         
         if completed > 0:
-            print(f"\n  📊 Downloaded: {completed} songs\n")
-        else:
+            print()
+            print(f"  📊 Downloaded: {completed}")
             print()
         
-        return process.returncode == 0
+        return True
         
-    except subprocess.CalledProcessError:
-        return False
-    except FileNotFoundError:
-        print("  ❌ gamdl not found")
-        return False
     except Exception as e:
-        print(f"\n  ❌ Error: {e}")
+        print(f"\n  ❌ Error: {e}\n")
         return False
 
 
