@@ -1,2 +1,3 @@
 gamdl
 rich
+inquirerpy
